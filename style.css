@@ -1,25 +1,26 @@
-/* Sembunyikan view di mode mobile KECUALI yang sedang memiliki class 'active' */
-@media (max-width: 1023px) {
-  .view-section { 
-    display: none !important; 
-  }
-  .view-section.active { 
-    display: flex !important; 
-  }
+/* Mengatur scrollbar agar terlihat rapi */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background-color: #e5e7eb;
+    border-radius: 20px;
 }
 
-/* Di mode desktop (>=1024px), paksa TAMPIL SEMUA berdampingan */
-@media (min-width: 1024px) {
-  .view-section { 
-    display: flex !important; 
-  }
+/* Animasi untuk batang gelombang suara */
+.wave-bar {
+    width: 6px;
+    border-radius: 9999px;
+    background-color: #6366f1; /* Warna Indigo Tailwind */
+    transition: height 0.1s ease;
+    height: 8px; /* Tinggi default saat tidak merekam */
+    opacity: 0.3;
 }
 
-/* Menghilangkan scrollbar tapi tetap bisa di-scroll */
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.is-recording .wave-bar {
+    opacity: 1;
+    /* Animasi tambahan dikontrol via JavaScript saat merekam */
 }
