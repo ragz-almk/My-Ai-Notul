@@ -1,3 +1,20 @@
+/* Sembunyikan view di mode mobile KECUALI yang sedang memiliki class 'active' */
+@media (max-width: 1023px) {
+  .view-section { 
+    display: none !important; 
+  }
+  .view-section.active { 
+    display: flex !important; 
+  }
+}
+
+/* Di mode desktop (>=1024px), paksa TAMPIL SEMUA berdampingan */
+@media (min-width: 1024px) {
+  .view-section { 
+    display: flex !important; 
+  }
+}
+
 /* Menghilangkan scrollbar tapi tetap bisa di-scroll */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
