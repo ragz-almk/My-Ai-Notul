@@ -5,8 +5,8 @@ lucide.createIcons();
 // KONFIGURASI API KEY AI (Ganti dengan API Key Anda!)
 // =========================================================
 // API 1: Untuk Speech to Text (Contoh: Groq Whisper API atau OpenAI)
-const STT_API_KEY = "MASUKKAN_API_KEY_STT_ANDA_DISINI"; 
-const STT_API_URL = "https://api.openai.com/v1/audio/transcriptions"; // Ubah URL jika menggunakan provider lain seperti Groq
+const STT_API_KEY = "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"; 
+const STT_API_URL = "https://api.openai.com/v1/audio/speech"; // Ubah URL jika menggunakan provider lain seperti Groq
 
 // API 2: Untuk Ringkasan Bahasa (Contoh: OpenAI GPT-4 atau Llama/Gemini)
 const LLM_API_KEY = "MASUKKAN_API_KEY_LLM_ANDA_DISINI";
@@ -166,7 +166,7 @@ async function processAudio() {
     const audioFile = new File([audioBlob], "recording.webm", { type: 'audio/webm' });
 
     // Cek jika API Key belum diisi
-    if(STT_API_KEY === "MASUKKAN_API_KEY_STT_ANDA_DISINI") {
+    if(STT_API_KEY === "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") {
         transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">⚠️ API Key STT belum dimasukkan di script.js!</p>`;
         return;
     }
@@ -175,7 +175,7 @@ async function processAudio() {
         // --- PROSES 1: Speech-to-Text (API 1) ---
         const formData = new FormData();
         formData.append("file", audioFile);
-        formData.append("model", "whisper-1"); 
+        formData.append("model", "gpt-4o-transcribe"); 
         
         transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang mengunggah audio ke AI Transkrip...</p>`;
 
@@ -244,19 +244,73 @@ async function generateSummary(text) {
     }
 }
 
-// 5. FITUR TEXT TO SPEECH (Bawaan Browser)
-function playTTS() {
+// 5. FITUR TEXT TO SPEECH (Menggunakan OpenAI TTS)
+async function playTTS() {
     if (!aiSummaryText) {
         alert("Belum ada ringkasan untuk dibacakan.");
         return;
     }
     
-    // Menghentikan ucapan sebelumnya jika masih berjalan
-    window.speechSynthesis.cancel(); 
+    // Pastikan API Key OpenAI sudah diisi
+    if(LLM_API_KEY === "MASUKKAN_API_KEY_OPENAI_ANDA_DISINI" || !LLM_API_KEY) {
+        alert("⚠️ API Key OpenAI belum dimasukkan untuk fitur TTS!");
+        return;
+    }
 
-    const speech = new SpeechSynthesisUtterance(aiSummaryText);
-    speech.lang = 'id-ID'; // Menggunakan bahasa Indonesia
-    speech.rate = 1.0;     // Kecepatan normal
-    
-    window.speechSynthesis.speak(speech);
+    const ttsButton = document.querySelector('button[title="Bacakan Notulen"]');
+    const originalIcon = ttsButton.innerHTML; // Simpan ikon original (Volume)
+
+    try {
+        // Ubah ikon tombol menjadi status "Loading" agar pengguna tahu proses sedang berjalan
+        ttsButton.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-indigo-500"></i>`;
+        lucide.createIcons();
+
+        // Mengirim request ke OpenAI Audio Speech API
+        const response = await fetch(TTS_API_URL, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${LLM_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "tts-1", // Bisa pakai "tts-1-hd" jika ingin kualitas studio (lebih mahal sedikit)
+                voice: "nova",  // Pilihan suara: alloy, echo, fable, onyx, nova, shimmer
+                input: aiSummaryText
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error?.message || "Gagal memanggil API TTS OpenAI");
+        }
+
+        // OpenAI mengembalikan file audio (audio/mpeg). Kita ubah menjadi Blob.
+        const audioBlob = await response.blob();
+        
+        // Buat URL sementara (Object URL) dari Blob tersebut agar bisa diputar di browser
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        
+        // Putar suaranya!
+        audio.play();
+
+        // Kembalikan ikon ke semula ketika audio mulai diputar
+        audio.onplay = () => {
+            ttsButton.innerHTML = originalIcon;
+            lucide.createIcons();
+        };
+
+        // Bersihkan memori setelah audio selesai diputar
+        audio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+        };
+
+    } catch (error) {
+        console.error("TTS Error:", error);
+        alert("Terjadi kesalahan saat memutar TTS: " + error.message);
+        
+        // Kembalikan ikon jika terjadi error
+        ttsButton.innerHTML = originalIcon;
+        lucide.createIcons();
+    }
 }
