@@ -2,15 +2,18 @@
 lucide.createIcons();
 
 // =========================================================
-// KONFIGURASI API KEY AI (Ganti dengan API Key Anda!)
+// KONFIGURASI API KEY AI
 // =========================================================
-// API 1: Untuk Speech to Text (Contoh: Groq Whisper API atau OpenAI)
+// API 1: Untuk Speech to Text (STT)
 const STT_API_KEY = "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"; 
-const STT_API_URL = "https://api.openai.com/v1/audio/speech"; // Ubah URL jika menggunakan provider lain seperti Groq
+// URL STT DIPERBAIKI
+const STT_API_URL = "https://api.openai.com/v1/audio/transcriptions"; 
 
-// API 2: Untuk Ringkasan Bahasa (Contoh: OpenAI GPT-4 atau Llama/Gemini)
+// API 2: Untuk Ringkasan Bahasa (LLM) & Text-to-Speech (TTS)
 const LLM_API_KEY = "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";
 const LLM_API_URL = "https://api.openai.com/v1/chat/completions";
+// URL TTS DITAMBAHKAN KEMBALI
+const TTS_API_URL = "https://api.openai.com/v1/audio/speech"; 
 
 // Variabel State
 let isRecording = false;
@@ -165,17 +168,11 @@ async function processAudio() {
     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
     const audioFile = new File([audioBlob], "recording.webm", { type: 'audio/webm' });
 
-    // Cek jika API Key belum diisi
-    if(STT_API_KEY === "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") {
-        transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">⚠️ API Key STT belum dimasukkan di script.js!</p>`;
-        return;
-    }
-
     try {
         // --- PROSES 1: Speech-to-Text (API 1) ---
         const formData = new FormData();
         formData.append("file", audioFile);
-        formData.append("model", "gpt-4o-transcribe"); 
+        formData.append("model", "whisper-1"); // Atau "gpt-4o-transcribe" jika akun Anda sudah didukung
         
         transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang mengunggah audio ke AI Transkrip...</p>`;
 
@@ -185,23 +182,12 @@ async function processAudio() {
             body: formData
         });
 
-        // 🌟 TAMBAHAN DEBUG: Menangkap pesan error asli dari server
+        const sttData = await sttResponse.json();
+        
         if(!sttResponse.ok) {
-            const errorDetail = await sttResponse.json();
-            console.error("Detail Error dari Server:", errorDetail);
-            throw new Error(`Error ${sttResponse.status}: ${errorDetail.error?.message || "Ditolak server"}`);
+            console.error("Detail Error STT:", sttData);
+            throw new Error(sttData.error?.message || "STT API Error");
         }
-
-        const sttData = await sttResponse.json();
-        const transcript = sttData.text;
-        
-        transcriptContainer.innerHTML = `<p>${transcript}</p>`;
-        statusText.innerText = "Transkripsi selesai.";
-        
-
-        const sttData = await sttResponse.json();
-        
-        if(!sttResponse.ok) throw new Error(sttData.error?.message || "STT API Error");
 
         const transcript = sttData.text;
         transcriptContainer.innerHTML = `<p>${transcript}</p>`;
@@ -217,11 +203,6 @@ async function processAudio() {
 }
 
 async function generateSummary(text) {
-    if(LLM_API_KEY === "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") {
-        summaryContainer.innerHTML = `<p class="text-red-500 text-sm">⚠️ API Key LLM belum dimasukkan!</p>`;
-        return;
-    }
-
     summaryContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang merangkum dan membuat action items...</p>`;
 
     try {
@@ -234,13 +215,17 @@ async function generateSummary(text) {
                 "Authorization": `Bearer ${LLM_API_KEY}`
             },
             body: JSON.stringify({
-                model: "gpt-3.5-turbo", // Sesuaikan dengan model LLM Anda
+                model: "gpt-3.5-turbo", 
                 messages: [{ role: "user", content: prompt }]
             })
         });
 
         const llmData = await llmResponse.json();
-        if(!llmResponse.ok) throw new Error(llmData.error?.message || "LLM API Error");
+        
+        if(!llmResponse.ok) {
+            console.error("Detail Error LLM:", llmData);
+            throw new Error(llmData.error?.message || "LLM API Error");
+        }
 
         aiSummaryText = llmData.choices[0].message.content; // Simpan untuk Text-to-Speech
 
@@ -264,12 +249,6 @@ async function playTTS() {
         alert("Belum ada ringkasan untuk dibacakan.");
         return;
     }
-    
-    // Pastikan API Key OpenAI sudah diisi
-    if(LLM_API_KEY === "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" || !LLM_API_KEY) {
-        alert("⚠️ API Key OpenAI belum dimasukkan untuk fitur TTS!");
-        return;
-    }
 
     const ttsButton = document.querySelector('button[title="Bacakan Notulen"]');
     const originalIcon = ttsButton.innerHTML; // Simpan ikon original (Volume)
@@ -287,8 +266,8 @@ async function playTTS() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "tts-1", // Bisa pakai "tts-1-hd" jika ingin kualitas studio (lebih mahal sedikit)
-                voice: "nova",  // Pilihan suara: alloy, echo, fable, onyx, nova, shimmer
+                model: "tts-1", 
+                voice: "nova",  
                 input: aiSummaryText
             })
         });
