@@ -166,7 +166,7 @@ async function processAudio() {
     const audioFile = new File([audioBlob], "recording.webm", { type: 'audio/webm' });
 
     // Cek jika API Key belum diisi
-    if(STT_API_KEY === "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") {
+    if(STT_API_KEY === "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") {
         transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">⚠️ API Key STT belum dimasukkan di script.js!</p>`;
         return;
     }
@@ -184,6 +184,20 @@ async function processAudio() {
             headers: { "Authorization": `Bearer ${STT_API_KEY}` },
             body: formData
         });
+
+        // 🌟 TAMBAHAN DEBUG: Menangkap pesan error asli dari server
+        if(!sttResponse.ok) {
+            const errorDetail = await sttResponse.json();
+            console.error("Detail Error dari Server:", errorDetail);
+            throw new Error(`Error ${sttResponse.status}: ${errorDetail.error?.message || "Ditolak server"}`);
+        }
+
+        const sttData = await sttResponse.json();
+        const transcript = sttData.text;
+        
+        transcriptContainer.innerHTML = `<p>${transcript}</p>`;
+        statusText.innerText = "Transkripsi selesai.";
+        
 
         const sttData = await sttResponse.json();
         
