@@ -1,11 +1,8 @@
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar { 
-  width: 6px; 
+/* Menghilangkan scrollbar tapi tetap bisa di-scroll */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-.custom-scrollbar::-webkit-scrollbar-track { 
-  background: transparent; 
-}
-.custom-scrollbar::-webkit-scrollbar-thumb { 
-  background-color: #cbd5e1; 
-  border-radius: 20px; 
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
