@@ -1,107 +1,262 @@
+// Inisialisasi ikon Lucide
 lucide.createIcons();
 
-// State Variables
+// =========================================================
+// KONFIGURASI API KEY AI (Ganti dengan API Key Anda!)
+// =========================================================
+// API 1: Untuk Speech to Text (Contoh: Groq Whisper API atau OpenAI)
+const STT_API_KEY = "MASUKKAN_API_KEY_STT_ANDA_DISINI"; 
+const STT_API_URL = "https://api.openai.com/v1/audio/transcriptions"; // Ubah URL jika menggunakan provider lain seperti Groq
+
+// API 2: Untuk Ringkasan Bahasa (Contoh: OpenAI GPT-4 atau Llama/Gemini)
+const LLM_API_KEY = "MASUKKAN_API_KEY_LLM_ANDA_DISINI";
+const LLM_API_URL = "https://api.openai.com/v1/chat/completions";
+
+// Variabel State
 let isRecording = false;
 let recordingTime = 0;
-let timerInterval = null;
+let timerInterval;
+let mediaRecorder;
+let audioChunks = [];
+let aiSummaryText = ""; // Untuk fitur Text-to-Speech
 
 // DOM Elements
-const views = document.querySelectorAll('.view-section');
-const viewHome = document.getElementById('view-home');
-const viewRecording = document.getElementById('view-recording');
-const viewDetail = document.getElementById('view-detail');
+const timerDisplay = document.getElementById('timerDisplay');
+const toggleRecordBtn = document.getElementById('toggle-record-btn');
+const recordIcon = document.getElementById('record-icon');
+const recordText = document.getElementById('record-text');
+const waveformContainer = document.getElementById('waveform');
+const statusText = document.getElementById('status-text');
+const transcriptContainer = document.getElementById('transcript-container');
+const summaryContainer = document.getElementById('summary-container');
 
-const timerDisplay = document.getElementById('timer-display');
-const btnPauseResume = document.getElementById('btn-pause-resume');
-const iconPause = document.getElementById('icon-pause');
-const iconPlay = document.getElementById('icon-play');
-const btnStopRecord = document.getElementById('btn-stop-record');
-
-const tabSummary = document.getElementById('tab-summary');
-const tabTranscript = document.getElementById('tab-transcript');
-const contentSummary = document.getElementById('content-summary');
-const contentTranscript = document.getElementById('content-transcript');
-
-// --- FUNGSI NAVIGASI HALAMAN (Khusus Mobile) ---
-function showView(viewToShow) {
-  // Hanya berdampak di mobile berkat CSS Media Query kita
-  views.forEach(view => view.classList.remove('active'));
-  viewToShow.classList.add('active');
+// 1. BUAT GELOMBANG SUARA (Visual UI saja)
+for (let i = 0; i < 30; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'wave-bar';
+    waveformContainer.appendChild(bar);
 }
 
-// Event Listeners Navigasi
-document.getElementById('btn-start-record-main').addEventListener('click', startRecording);
-document.querySelectorAll('.btn-start-record').forEach(btn => {
-  btn.addEventListener('click', startRecording);
-});
-document.querySelectorAll('.btn-open-detail').forEach(btn => {
-  btn.addEventListener('click', () => showView(viewDetail));
-});
-document.querySelectorAll('.btn-back-home').forEach(btn => {
-  btn.addEventListener('click', () => showView(viewHome));
-});
+// 2. NAVIGASI TAB & SIDEBAR
+function switchTab(tabId) {
+    // Sembunyikan semua view
+    document.getElementById('view-dashboard').classList.replace('block', 'hidden');
+    document.getElementById('view-recording').classList.replace('flex', 'hidden');
+    document.getElementById('view-notes').classList.replace('flex', 'hidden');
 
-// --- LOGIKA RECORDING & TIMER ---
-function formatTime(seconds) {
-  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-  const s = (seconds % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
-}
+    // Reset style semua tombol navigasi
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('bg-indigo-50', 'text-indigo-600', 'font-medium');
+        btn.classList.add('text-gray-500', 'hover:bg-gray-50');
+    });
 
-function startRecording() {
-  recordingTime = 0;
-  isRecording = true;
-  timerDisplay.textContent = formatTime(recordingTime);
-  
-  iconPause.classList.remove('hidden');
-  iconPlay.classList.add('hidden');
-
-  showView(viewRecording);
-
-  clearInterval(timerInterval);
-  timerInterval = setInterval(() => {
-    if (isRecording) {
-      recordingTime++;
-      timerDisplay.textContent = formatTime(recordingTime);
+    // Tampilkan view yang dipilih
+    if(tabId === 'recording') {
+        document.getElementById('view-recording').classList.replace('hidden', 'flex');
+        document.getElementById('header-title').innerText = 'Sesi Rekaman';
+    } else if(tabId === 'dashboard') {
+        document.getElementById('view-dashboard').classList.replace('hidden', 'block');
+        document.getElementById('header-title').innerText = 'Selamat Pagi!';
+    } else {
+        document.getElementById('view-notes').classList.replace('hidden', 'flex');
+        document.getElementById('header-title').innerText = 'Arsip Notulen';
     }
-  }, 1000);
+
+    // Update style tombol yang aktif
+    const activeBtn = document.getElementById(`nav-${tabId}`);
+    activeBtn.classList.remove('text-gray-500', 'hover:bg-gray-50');
+    activeBtn.classList.add('bg-indigo-50', 'text-indigo-600', 'font-medium');
+
+    // Tutup sidebar di mobile
+    document.getElementById('sidebar').classList.add('-translate-x-full');
+    document.getElementById('sidebar-overlay').classList.add('hidden');
 }
 
-btnPauseResume.addEventListener('click', () => {
-  isRecording = !isRecording;
-  if(isRecording) {
-    iconPause.classList.remove('hidden');
-    iconPlay.classList.add('hidden');
-  } else {
-    iconPause.classList.add('hidden');
-    iconPlay.classList.remove('hidden');
-  }
+// Sidebar Mobile Toggle
+document.getElementById('open-sidebar').onclick = () => {
+    document.getElementById('sidebar').classList.remove('-translate-x-full');
+    document.getElementById('sidebar-overlay').classList.remove('hidden');
+};
+document.getElementById('close-sidebar').onclick = () => {
+    document.getElementById('sidebar').classList.add('-translate-x-full');
+    document.getElementById('sidebar-overlay').classList.add('hidden');
+};
+document.getElementById('sidebar-overlay').onclick = document.getElementById('close-sidebar').onclick;
+
+// 3. FUNGSI PEREKAMAN AUDIO
+toggleRecordBtn.addEventListener('click', async () => {
+    if (!isRecording) {
+        await startRecording();
+    } else {
+        stopRecording();
+    }
 });
 
-btnStopRecord.addEventListener('click', () => {
-  isRecording = false;
-  clearInterval(timerInterval);
-  showView(viewDetail);
-});
+async function startRecording() {
+    try {
+        // Meminta izin mikrofon
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
 
-// --- LOGIKA TAB DI HALAMAN DETAIL ---
-function switchTab(activeTab) {
-  if (activeTab === 'summary') {
-    tabSummary.classList.replace('text-slate-400', 'text-indigo-600');
-    tabTranscript.classList.replace('text-indigo-600', 'text-slate-400');
-    tabSummary.querySelector('.tab-indicator').classList.remove('hidden');
-    tabTranscript.querySelector('.tab-indicator').classList.add('hidden');
-    contentSummary.classList.remove('hidden');
-    contentTranscript.classList.add('hidden');
-  } else {
-    tabTranscript.classList.replace('text-slate-400', 'text-indigo-600');
-    tabSummary.classList.replace('text-indigo-600', 'text-slate-400');
-    tabTranscript.querySelector('.tab-indicator').classList.remove('hidden');
-    tabSummary.querySelector('.tab-indicator').classList.add('hidden');
-    contentTranscript.classList.remove('hidden');
-    contentSummary.classList.add('hidden');
-  }
+        mediaRecorder.ondataavailable = event => {
+            if (event.data.size > 0) audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = processAudio; // Saat berhenti, proses ke AI
+
+        mediaRecorder.start();
+        isRecording = true;
+        switchTab('recording');
+
+        // Update UI Button
+        toggleRecordBtn.classList.replace('bg-indigo-600', 'bg-red-50');
+        toggleRecordBtn.classList.replace('text-white', 'text-red-600');
+        toggleRecordBtn.classList.add('ring-1', 'ring-red-200');
+        recordText.innerText = "Hentikan";
+        recordIcon.setAttribute('data-lucide', 'square');
+        lucide.createIcons();
+        waveformContainer.classList.add('is-recording');
+        statusText.innerText = "Sedang merekam... Bicaralah.";
+        
+        // Mulai Timer & Animasi Gelombang
+        timerInterval = setInterval(updateTimerAndWaveform, 1000);
+
+    } catch (err) {
+        alert("Gagal mengakses mikrofon: " + err.message);
+    }
 }
 
-tabSummary.addEventListener('click', () => switchTab('summary'));
-tabTranscript.addEventListener('click', () => switchTab('transcript'));
+function stopRecording() {
+    isRecording = false;
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(track => track.stop()); // Matikan mikrofon
+    clearInterval(timerInterval);
+
+    // Reset UI Button
+    toggleRecordBtn.classList.replace('bg-red-50', 'bg-indigo-600');
+    toggleRecordBtn.classList.replace('text-red-600', 'text-white');
+    toggleRecordBtn.classList.remove('ring-1', 'ring-red-200');
+    recordText.innerText = "Mulai Rekam";
+    recordIcon.setAttribute('data-lucide', 'mic');
+    lucide.createIcons();
+    waveformContainer.classList.remove('is-recording');
+    
+    // Reset tinggi gelombang
+    document.querySelectorAll('.wave-bar').forEach(bar => bar.style.height = '8px');
+    statusText.innerText = "Memproses transkripsi AI... Mohon tunggu.";
+}
+
+function updateTimerAndWaveform() {
+    recordingTime++;
+    const m = Math.floor(recordingTime / 60).toString().padStart(2, '0');
+    const s = (recordingTime % 60).toString().padStart(2, '0');
+    document.getElementById('timer-display').innerText = `${m}:${s}`;
+
+    // Animasi acak untuk gelombang saat merekam
+    document.querySelectorAll('.wave-bar').forEach(bar => {
+        const height = Math.floor(Math.random() * 40) + 10; // Tinggi acak 10-50px
+        bar.style.height = `${height}px`;
+    });
+}
+
+// 4. MEMPROSES AUDIO KE API STT & LLM
+async function processAudio() {
+    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+    const audioFile = new File([audioBlob], "recording.webm", { type: 'audio/webm' });
+
+    // Cek jika API Key belum diisi
+    if(STT_API_KEY === "MASUKKAN_API_KEY_STT_ANDA_DISINI") {
+        transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">⚠️ API Key STT belum dimasukkan di script.js!</p>`;
+        return;
+    }
+
+    try {
+        // --- PROSES 1: Speech-to-Text (API 1) ---
+        const formData = new FormData();
+        formData.append("file", audioFile);
+        formData.append("model", "whisper-1"); 
+        
+        transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang mengunggah audio ke AI Transkrip...</p>`;
+
+        const sttResponse = await fetch(STT_API_URL, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${STT_API_KEY}` },
+            body: formData
+        });
+
+        const sttData = await sttResponse.json();
+        
+        if(!sttResponse.ok) throw new Error(sttData.error?.message || "STT API Error");
+
+        const transcript = sttData.text;
+        transcriptContainer.innerHTML = `<p>${transcript}</p>`;
+        statusText.innerText = "Transkripsi selesai.";
+
+        // --- PROSES 2: Summarization (API 2) ---
+        generateSummary(transcript);
+
+    } catch (error) {
+        console.error("STT Error:", error);
+        transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">Gagal mentranskrip: ${error.message}</p>`;
+    }
+}
+
+async function generateSummary(text) {
+    if(LLM_API_KEY === "MASUKKAN_API_KEY_LLM_ANDA_DISINI") {
+        summaryContainer.innerHTML = `<p class="text-red-500 text-sm">⚠️ API Key LLM belum dimasukkan!</p>`;
+        return;
+    }
+
+    summaryContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang merangkum dan membuat action items...</p>`;
+
+    try {
+        const prompt = `Anda adalah asisten notulen profesional. Buat ringkasan paragraf singkat dan daftar bullet "Action Items" dari transkrip berikut:\n\n"${text}"`;
+
+        const llmResponse = await fetch(LLM_API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${LLM_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-3.5-turbo", // Sesuaikan dengan model LLM Anda
+                messages: [{ role: "user", content: prompt }]
+            })
+        });
+
+        const llmData = await llmResponse.json();
+        if(!llmResponse.ok) throw new Error(llmData.error?.message || "LLM API Error");
+
+        aiSummaryText = llmData.choices[0].message.content; // Simpan untuk Text-to-Speech
+
+        // Format teks menggunakan Regex sederhana untuk tampilan HTML
+        const formattedHTML = aiSummaryText
+            .replace(/\n\n/g, '<br><br>')
+            .replace(/- (.*)/g, '<li class="flex items-start text-sm text-gray-600 mb-1"><i data-lucide="check-circle-2" class="w-4 h-4 text-indigo-500 mr-2 shrink-0"></i>$1</li>');
+
+        summaryContainer.innerHTML = `<div class="text-sm text-gray-800">${formattedHTML}</div>`;
+        lucide.createIcons(); // render ulang ikon yang baru disuntikkan
+
+    } catch (error) {
+        console.error("LLM Error:", error);
+        summaryContainer.innerHTML = `<p class="text-red-500 text-sm">Gagal membuat ringkasan: ${error.message}</p>`;
+    }
+}
+
+// 5. FITUR TEXT TO SPEECH (Bawaan Browser)
+function playTTS() {
+    if (!aiSummaryText) {
+        alert("Belum ada ringkasan untuk dibacakan.");
+        return;
+    }
+    
+    // Menghentikan ucapan sebelumnya jika masih berjalan
+    window.speechSynthesis.cancel(); 
+
+    const speech = new SpeechSynthesisUtterance(aiSummaryText);
+    speech.lang = 'id-ID'; // Menggunakan bahasa Indonesia
+    speech.rate = 1.0;     // Kecepatan normal
+    
+    window.speechSynthesis.speak(speech);
+}
