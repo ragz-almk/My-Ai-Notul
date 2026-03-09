@@ -1,190 +1,130 @@
-// Inisialisasi ikon Lucide
+// Inisialisasi Lucide Icons
 lucide.createIcons();
 
-// --- MANAJEMEN TAB ---
-const tabs = ['stt', 'summary', 'tts'];
+// State Variables
+let isRecording = false;
+let recordingTime = 0;
+let timerInterval = null;
 
-tabs.forEach(tab => {
-  document.getElementById(`btn-tab-${tab}`).addEventListener('click', () => {
-    // Sembunyikan semua konten dan reset tombol
-    tabs.forEach(t => {
-      document.getElementById(`tab-${t}`).classList.add('hidden');
-      document.getElementById(`tab-${t}`).classList.remove('block');
-      
-      const btn = document.getElementById(`btn-tab-${t}`);
-      btn.className = `tab-btn flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all text-slate-500 hover:text-slate-700`;
-    });
+// DOM Elements - Views
+const viewHome = document.getElementById('view-home');
+const viewRecording = document.getElementById('view-recording');
+const viewDetail = document.getElementById('view-detail');
 
-    // Tampilkan tab yang dipilih
-    document.getElementById(`tab-${tab}`).classList.remove('hidden');
-    document.getElementById(`tab-${tab}`).classList.add('block');
-    
-    // Ubah gaya tombol yang aktif
-    const activeBtn = document.getElementById(`btn-tab-${tab}`);
-    activeBtn.className = `tab-btn flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all bg-white text-blue-600 shadow-sm`;
-  });
+// DOM Elements - Buttons & Text
+const timerDisplay = document.getElementById('timer-display');
+const btnPauseResume = document.getElementById('btn-pause-resume');
+const iconPause = document.getElementById('icon-pause');
+const iconPlay = document.getElementById('icon-play');
+const btnStopRecord = document.getElementById('btn-stop-record');
+
+// Tabs
+const tabSummary = document.getElementById('tab-summary');
+const tabTranscript = document.getElementById('tab-transcript');
+const contentSummary = document.getElementById('content-summary');
+const contentTranscript = document.getElementById('content-transcript');
+
+// --- FUNGSI NAVIGASI HALAMAN ---
+function showView(viewToShow) {
+  // Sembunyikan semua
+  viewHome.classList.add('hidden');
+  viewRecording.classList.add('hidden');
+  viewDetail.classList.add('hidden');
+  // Tampilkan yang diminta
+  viewToShow.classList.remove('hidden');
+}
+
+// Event Listeners Navigasi
+document.getElementById('btn-start-record-main').addEventListener('click', startRecording);
+document.querySelectorAll('.btn-start-record').forEach(btn => {
+  btn.addEventListener('click', startRecording);
+});
+document.querySelectorAll('.btn-open-detail').forEach(btn => {
+  btn.addEventListener('click', () => showView(viewDetail));
+});
+document.querySelectorAll('.btn-back-home').forEach(btn => {
+  btn.addEventListener('click', () => showView(viewHome));
 });
 
-// --- STATE APLIKASI ---
-let isRecording = false;
-let recordingTimer = null;
-let secondsElapsed = 0;
-let fullTranscript = ""; // Akan menyimpan teks gabungan untuk diringkas
-let mediaRecorder;
-let audioChunks = [];
 
-// Elemen DOM
-const btnRecord = document.getElementById('btn-record');
-const recordIcon = document.getElementById('record-icon');
-const recordPulse = document.getElementById('record-pulse');
-const recordingStatus = document.getElementById('recording-status');
-const recordingTimeEl = document.getElementById('recording-time');
-const transcriptContainer = document.getElementById('transcript-container');
-const btnGenerateSummary = document.getElementById('btn-generate-summary');
-const summaryContent = document.getElementById('summary-content');
-
-// --- FORMAT WAKTU ---
-function formatTime(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-  const s = (totalSeconds % 60).toString().padStart(2, '0');
+// --- LOGIKA RECORDING & TIMER ---
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
 }
 
-// --- FUNGSI MEREKAM SUARA ---
-async function toggleRecording() {
-  if (!isRecording) {
-    // MULAI MEREKAM
-    try {
-      // Minta izin akses mikrofon
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
+function startRecording() {
+  // Reset Timer
+  recordingTime = 0;
+  isRecording = true;
+  timerDisplay.textContent = formatTime(recordingTime);
+  
+  // Update ikon tombol pause/play
+  iconPause.classList.remove('hidden');
+  iconPlay.classList.add('hidden');
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunks.push(event.data);
-      };
+  showView(viewRecording);
 
-      mediaRecorder.onstop = async () => {
-        // Saat rekaman dihentikan, jadikan blob (file audio)
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        await processAudioWithAI(audioBlob);
-      };
-
-      mediaRecorder.start();
-
-      // Update UI
-      isRecording = true;
-      btnRecord.classList.replace('bg-red-500', 'bg-slate-800');
-      btnRecord.classList.replace('hover:bg-red-600', 'hover:bg-slate-700');
-      recordIcon.setAttribute('data-lucide', 'square');
-      recordPulse.classList.remove('hidden');
-      recordingStatus.innerText = 'Merekam...';
-      transcriptContainer.innerHTML = `<div class="p-3 bg-blue-50 text-blue-600 rounded-xl text-sm animate-pulse">Sedang mendengarkan...</div>`;
-      lucide.createIcons();
-
-      // Mulai Timer
-      secondsElapsed = 0;
-      recordingTimeEl.innerText = formatTime(secondsElapsed);
-      recordingTimer = setInterval(() => {
-        secondsElapsed++;
-        recordingTimeEl.innerText = formatTime(secondsElapsed);
-      }, 1000);
-
-    } catch (err) {
-      alert("Gagal mengakses mikrofon. Pastikan izin diberikan.");
-      console.error(err);
+  // Jalankan interval
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (isRecording) {
+      recordingTime++;
+      timerDisplay.textContent = formatTime(recordingTime);
     }
+  }, 1000);
+}
 
+// Pause / Resume Record
+btnPauseResume.addEventListener('click', () => {
+  isRecording = !isRecording;
+  if(isRecording) {
+    iconPause.classList.remove('hidden');
+    iconPlay.classList.add('hidden');
   } else {
-    // BERHENTI MEREKAM
-    mediaRecorder.stop(); // Ini akan memicu event onstop di atas
-
-    // Update UI
-    isRecording = false;
-    clearInterval(recordingTimer);
-    btnRecord.classList.replace('bg-slate-800', 'bg-red-500');
-    btnRecord.classList.replace('hover:bg-slate-700', 'hover:bg-red-600');
-    recordIcon.setAttribute('data-lucide', 'mic');
-    recordPulse.classList.add('hidden');
-    recordingStatus.innerText = 'Memproses Audio...';
-    lucide.createIcons();
-  }
-}
-
-btnRecord.addEventListener('click', toggleRecording);
-
-// --- 1. INTEGRASI API: SPEECH TO TEXT ---
-// Fungsi ini mengirim file audio ke backend Vercel kamu
-async function processAudioWithAI(audioBlob) {
-  try {
-    // Membuat form data untuk dikirim
-    const formData = new FormData();
-    formData.append('file', audioBlob, 'recording.webm');
-
-    // MOCK API CALL - Ganti URL ini dengan endpoint Vercel-mu!
-    // Contoh: const response = await fetch('/api/stt', { method: 'POST', body: formData });
-    
-    // Simulasi loading/delay API (Hapus ini jika sudah pakai API asli)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    const mockResponse = { text: "Selamat pagi semuanya. Mari kita mulai rapat sinkronisasi hari ini. Agenda utama kita adalah peluncuran fitur baru bulan depan." };
-    
-    // Anggap transkrip berhasil didapat
-    const transcriptText = mockResponse.text; // Pada API asli: await response.json().text
-    fullTranscript += transcriptText + " "; // Simpan untuk diringkas nanti
-
-    // Tampilkan di UI
-    recordingStatus.innerText = 'Siap Merekam';
-    transcriptContainer.innerHTML = `
-      <div class="flex gap-3 mb-4">
-        <div class="flex-1 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-          <p class="text-slate-600 leading-relaxed text-sm">${transcriptText}</p>
-        </div>
-      </div>
-    `;
-
-  } catch (error) {
-    console.error("Error STT API:", error);
-    recordingStatus.innerText = 'Gagal memproses audio';
-  }
-}
-
-// --- 2. INTEGRASI API: NATURAL LANGUAGE (RINGKASAN) ---
-// Fungsi ini mengirim fullTranscript ke AI untuk diringkas
-btnGenerateSummary.addEventListener('click', async () => {
-  if (!fullTranscript.trim()) {
-    alert("Belum ada transkrip untuk diringkas. Silakan rekam sesuatu di tab Rapat Aktif.");
-    return;
-  }
-
-  summaryContent.innerHTML = `<p class="text-blue-500 text-sm animate-pulse">AI sedang menganalisis rapat... mohon tunggu.</p>`;
-
-  try {
-    // MOCK API CALL - Ganti URL ini dengan endpoint Vercel-mu!
-    /*
-    const response = await fetch('/api/summarize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: fullTranscript })
-    });
-    const result = await response.json();
-    */
-
-    // Simulasi loading/delay API
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    const aiSummary = "Rapat membahas persiapan peluncuran fitur baru. Segera selesaikan persiapan peluncuran.";
-
-    // Tampilkan di UI
-    summaryContent.innerHTML = `
-      <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-        <h3 class="font-bold text-slate-700 mb-2">Ringkasan Utama</h3>
-        <p class="text-slate-600 text-sm md:text-base leading-relaxed">
-          ${aiSummary}
-        </p>
-      </div>
-    `;
-
-  } catch (error) {
-    console.error("Error Summary API:", error);
-    summaryContent.innerHTML = `<p class="text-red-500 text-sm">Gagal membuat ringkasan. Coba lagi.</p>`;
+    iconPause.classList.add('hidden');
+    iconPlay.classList.remove('hidden');
   }
 });
+
+// Stop Record
+btnStopRecord.addEventListener('click', () => {
+  isRecording = false;
+  clearInterval(timerInterval);
+  showView(viewDetail);
+});
+
+
+// --- LOGIKA TAB DI HALAMAN DETAIL ---
+function switchTab(activeTab) {
+  if (activeTab === 'summary') {
+    // Styling teks
+    tabSummary.classList.replace('text-slate-400', 'text-indigo-600');
+    tabTranscript.classList.replace('text-indigo-600', 'text-slate-400');
+    
+    // Indikator garis bawah
+    tabSummary.querySelector('.tab-indicator').classList.remove('hidden');
+    tabTranscript.querySelector('.tab-indicator').classList.add('hidden');
+    
+    // Tampilan Konten
+    contentSummary.classList.remove('hidden');
+    contentTranscript.classList.add('hidden');
+
+  } else {
+    // Styling teks
+    tabTranscript.classList.replace('text-slate-400', 'text-indigo-600');
+    tabSummary.classList.replace('text-indigo-600', 'text-slate-400');
+    
+    // Indikator garis bawah
+    tabTranscript.querySelector('.tab-indicator').classList.remove('hidden');
+    tabSummary.querySelector('.tab-indicator').classList.add('hidden');
+    
+    // Tampilan Konten
+    contentTranscript.classList.remove('hidden');
+    contentSummary.classList.add('hidden');
+  }
+}
+
+tabSummary.addEventListener('click', () => switchTab('summary'));
+tabTranscript.addEventListener('click', () => switchTab('transcript'));
