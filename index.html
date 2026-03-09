@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notula.AI - Asisten Rapat Otomatis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-blue-200">
+
+  <header class="bg-white sticky top-0 z-10 px-4 py-4 md:px-6 flex justify-between items-center shadow-sm">
+    <div class="flex items-center gap-2">
+      <div class="bg-blue-600 p-2 rounded-xl text-white">
+        <i data-lucide="sparkles" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold leading-tight">Notula.AI</h1>
+        <p class="text-xs text-slate-500">Asisten Rapat Otomatis</p>
+      </div>
+    </div>
+    <button class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+      <i data-lucide="settings" class="w-5 h-5"></i>
+    </button>
+  </header>
+
+  <main class="max-w-3xl mx-auto p-4 md:py-6 pb-24 md:pb-6">
+    
+    <div class="flex bg-slate-200/50 p-1 rounded-2xl mb-6">
+      <button id="btn-tab-stt" class="tab-btn flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all bg-white text-blue-600 shadow-sm">
+        <i data-lucide="mic" class="w-4 h-4"></i> <span class="hidden sm:inline">Rapat Aktif</span>
+      </button>
+      <button id="btn-tab-summary" class="tab-btn flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all text-slate-500 hover:text-slate-700">
+        <i data-lucide="file-text" class="w-4 h-4"></i> <span class="hidden sm:inline">Notulen AI</span>
+      </button>
+      <button id="btn-tab-tts" class="tab-btn flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium transition-all text-slate-500 hover:text-slate-700">
+        <i data-lucide="volume-2" class="w-4 h-4"></i> <span class="hidden sm:inline">Text to Speech</span>
+      </button>
+    </div>
+
+    <div id="tab-stt" class="tab-content block space-y-4 shadow-sm bg-white p-4 md:p-6 rounded-3xl border border-slate-100">
+      <div class="flex flex-col items-center justify-center py-6 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
+        <p class="text-sm text-slate-500 font-medium mb-4 flex items-center gap-2">
+          <i data-lucide="clock" class="w-4 h-4"></i> <span id="recording-status">Siap Merekam</span>
+        </p>
+        
+        <div class="flex items-center gap-6">
+          <span id="recording-time" class="text-3xl font-light tabular-nums text-slate-700 w-24 text-right">00:00</span>
+          
+          <button id="btn-record" class="relative flex items-center justify-center w-16 h-16 rounded-full shadow-md transition-all bg-red-500 hover:bg-red-600 group">
+            <span id="record-pulse" class="hidden absolute inset-0 rounded-full border-2 border-slate-800 animate-ping opacity-20"></span>
+            <i id="record-icon" data-lucide="mic" class="w-7 h-7 text-white"></i>
+          </button>
+          
+          <span class="w-24"></span>
+        </div>
+      </div>
+
+      <div>
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+            <i data-lucide="users" class="w-4 h-4 text-blue-500"></i> Transkrip Live
+          </h3>
+          <span class="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Bahasa Indonesia
+          </span>
+        </div>
+        
+        <div id="transcript-container" class="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+          <p class="text-center text-slate-400 text-sm mt-10">Belum ada transkrip. Tekan tombol rekam untuk mulai.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-summary" class="tab-content hidden space-y-4">
+      <div class="bg-white p-5 md:p-6 rounded-3xl shadow-sm border border-slate-100">
+        <div class="flex justify-between items-start mb-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-800 mb-1">Hasil Ringkasan AI</h2>
+          </div>
+          <button id="btn-generate-summary" class="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-4 h-4"></i> Buat Ringkasan Baru
+          </button>
+        </div>
+
+        <div id="summary-content">
+           <p class="text-slate-500 text-sm">Klik "Buat Ringkasan Baru" untuk menganalisis transkrip terakhir menggunakan AI.</p>
+           </div>
+      </div>
+    </div>
+
+    <div id="tab-tts" class="tab-content hidden bg-white p-5 md:p-6 rounded-3xl shadow-sm border border-slate-100">
+      <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+        <i data-lucide="volume-2" class="w-5 h-5 text-blue-500"></i> Text to Speech
+      </h2>
+      <p class="text-sm text-slate-500 mb-4">Ketik teks di bawah ini, AI akan membacakannya.</p>
+
+      <div class="space-y-4">
+        <textarea id="tts-input" class="w-full h-40 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none leading-relaxed text-sm md:text-base custom-scrollbar" placeholder="Masukkan teks di sini..."></textarea>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
