@@ -5,11 +5,11 @@ lucide.createIcons();
 // KONFIGURASI API KEY AI (Ganti dengan API Key Anda!)
 // =========================================================
 // API 1: Untuk Speech to Text (Contoh: Groq Whisper API atau OpenAI)
-const STT_API_KEY = "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"; 
+const STT_API_KEY = "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"; 
 const STT_API_URL = "https://api.openai.com/v1/audio/speech"; // Ubah URL jika menggunakan provider lain seperti Groq
 
 // API 2: Untuk Ringkasan Bahasa (Contoh: OpenAI GPT-4 atau Llama/Gemini)
-const LLM_API_KEY = "MASUKKAN_API_KEY_LLM_ANDA_DISINI";
+const LLM_API_KEY = "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";
 const LLM_API_URL = "https://api.openai.com/v1/chat/completions";
 
 // Variabel State
@@ -203,7 +203,7 @@ async function processAudio() {
 }
 
 async function generateSummary(text) {
-    if(LLM_API_KEY === "MASUKKAN_API_KEY_LLM_ANDA_DISINI") {
+    if(LLM_API_KEY === "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") {
         summaryContainer.innerHTML = `<p class="text-red-500 text-sm">⚠️ API Key LLM belum dimasukkan!</p>`;
         return;
     }
@@ -252,7 +252,7 @@ async function playTTS() {
     }
     
     // Pastikan API Key OpenAI sudah diisi
-    if(LLM_API_KEY === "MASUKKAN_API_KEY_OPENAI_ANDA_DISINI" || !LLM_API_KEY) {
+    if(LLM_API_KEY === "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" || !LLM_API_KEY) {
         alert("⚠️ API Key OpenAI belum dimasukkan untuk fitur TTS!");
         return;
     }
