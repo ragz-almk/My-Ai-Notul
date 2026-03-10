@@ -1,20 +1,6 @@
 // Inisialisasi ikon Lucide
 lucide.createIcons();
 
-// =========================================================
-// KONFIGURASI API KEY AI
-// =========================================================
-// API 1: Untuk Speech to Text (STT)
-const STT_API_KEY = "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"; 
-// URL STT DIPERBAIKI
-const STT_API_URL = "https://api.openai.com/v1/audio/transcriptions"; 
-
-// API 2: Untuk Ringkasan Bahasa (LLM) & Text-to-Speech (TTS)
-const LLM_API_KEY = "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";
-const LLM_API_URL = "https://api.openai.com/v1/chat/completions";
-// URL TTS DITAMBAHKAN KEMBALI
-const TTS_API_URL = "https://api.openai.com/v1/audio/speech"; 
-
 // Variabel State
 let isRecording = false;
 let recordingTime = 0;
