@@ -152,22 +152,21 @@ function updateTimerAndWaveform() {
 // ... (Kode bagian atas script.js, navigasi tab, dan timer biarkan sama seperti sebelumnya) ...
 // PENTING: Hapus semua variabel STT_API_KEY, LLM_API_KEY, dan URL dari bagian atas script.js Anda!
 
-// 4. MEMPROSES AUDIO KE API STT & LLM MELALUI BACKEND VERCEL
+// 4. MEMPROSES AUDIO KE VERCEL BACKEND (MENGGUNAKAN GEMINI)
 async function processAudio() {
     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
     
-    // Ubah audio menjadi string Base64 agar mudah dikirim sebagai JSON ke Vercel API
+    // Ubah audio menjadi string Base64
     const reader = new FileReader();
     reader.readAsDataURL(audioBlob);
     
     reader.onloadend = async () => {
-        // Mengambil bagian datanya saja (menghilangkan 'data:audio/webm;base64,')
         const base64Audio = reader.result.split(',')[1];
 
         try {
-            transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang mengunggah audio ke server...</p>`;
+            transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang mengirim audio ke Gemini AI...</p>`;
 
-            // --- PROSES 1: Memanggil file api/transcribe.js ---
+            // --- PROSES 1: Transkripsi ---
             const sttResponse = await fetch('/api/transcribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -175,14 +174,13 @@ async function processAudio() {
             });
 
             const sttData = await sttResponse.json();
-            
             if(!sttResponse.ok) throw new Error(sttData.error || "Gagal menghubungi backend STT");
 
-            const transcript = sttData.text;
+            const transcript = sttData.text; // Sesuai dengan kembalian di api/transcribe.js
             transcriptContainer.innerHTML = `<p>${transcript}</p>`;
             statusText.innerText = "Transkripsi selesai.";
 
-            // --- PROSES 2: Summarization ---
+            // --- PROSES 2: Rangkuman ---
             generateSummary(transcript);
 
         } catch (error) {
@@ -193,10 +191,9 @@ async function processAudio() {
 }
 
 async function generateSummary(text) {
-    summaryContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang merangkum dan membuat action items...</p>`;
+    summaryContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Gemini sedang merangkum notulen...</p>`;
 
     try {
-        // --- Memanggil file api/summarize.js ---
         const llmResponse = await fetch('/api/summarize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -204,15 +201,17 @@ async function generateSummary(text) {
         });
 
         const llmData = await llmResponse.json();
-        
         if(!llmResponse.ok) throw new Error(llmData.error || "Gagal menghubungi backend LLM");
 
-        aiSummaryText = llmData.choices[0].message.content; // Simpan untuk Text-to-Speech
+        aiSummaryText = llmData.summary; // Menyimpan teks murni untuk fitur TTS
+
+        // Membersihkan format Markdown tebal (**) dari Gemini agar tampilan HTML lebih rapi
+        let cleanText = aiSummaryText.replace(/\*\*/g, '');
 
         // Format teks untuk tampilan HTML
-        const formattedHTML = aiSummaryText
+        const formattedHTML = cleanText
             .replace(/\n\n/g, '<br><br>')
-            .replace(/- (.*)/g, '<li class="flex items-start text-sm text-gray-600 mb-1"><i data-lucide="check-circle-2" class="w-4 h-4 text-indigo-500 mr-2 shrink-0"></i>$1</li>');
+            .replace(/\* (.*)/g, '<li class="flex items-start text-sm text-gray-600 mb-1"><i data-lucide="check-circle-2" class="w-4 h-4 text-indigo-500 mr-2 shrink-0"></i>$1</li>');
 
         summaryContainer.innerHTML = `<div class="text-sm text-gray-800">${formattedHTML}</div>`;
         lucide.createIcons();
@@ -223,52 +222,43 @@ async function generateSummary(text) {
     }
 }
 
-// 5. FITUR TEXT TO SPEECH (Melalui Backend Vercel)
-async function playTTS() {
+// 5. FITUR TEXT TO SPEECH (Menggunakan Browser Native Web Speech API)
+function playTTS() {
     if (!aiSummaryText) {
         alert("Belum ada ringkasan untuk dibacakan.");
         return;
     }
 
+    // Menghentikan jika ada ucapan sebelumnya yang masih berjalan
+    window.speechSynthesis.cancel(); 
+
+    // Membersihkan simbol bintang dari markdown Gemini agar tidak ikut dibaca oleh robot
+    const cleanTextForSpeech = aiSummaryText.replace(/\*/g, '');
+
+    const speech = new SpeechSynthesisUtterance(cleanTextForSpeech);
+    speech.lang = 'id-ID'; // Menggunakan bahasa Indonesia
+    speech.rate = 1.0;     // Kecepatan normal
+    
     const ttsButton = document.querySelector('button[title="Bacakan Notulen"]');
     const originalIcon = ttsButton.innerHTML;
 
-    try {
-        ttsButton.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-indigo-500"></i>`;
+    // Ubah ikon saat mulai berbicara
+    speech.onstart = () => {
+        ttsButton.innerHTML = `<i data-lucide="volume-x" class="w-4 h-4 text-indigo-500 animate-pulse"></i>`;
         lucide.createIcons();
+    };
 
-        // --- Memanggil file api/tts.js ---
-        const response = await fetch('/api/tts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: aiSummaryText })
-        });
-
-        if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error || "Gagal menghubungi backend TTS");
-        }
-
-        // Karena backend mengembalikan file Buffer Audio, kita ubah jadi Blob
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioUrl);
-        
-        audio.play();
-
-        audio.onplay = () => {
-            ttsButton.innerHTML = originalIcon;
-            lucide.createIcons();
-        };
-
-        audio.onended = () => {
-            URL.revokeObjectURL(audioUrl);
-        };
-
-    } catch (error) {
-        console.error("TTS Error:", error);
-        alert("Terjadi kesalahan saat memutar TTS: " + error.message);
+    // Kembalikan ikon saat selesai
+    speech.onend = () => {
         ttsButton.innerHTML = originalIcon;
         lucide.createIcons();
-    }
+    };
+
+    speech.onerror = () => {
+        ttsButton.innerHTML = originalIcon;
+        lucide.createIcons();
+    };
+
+    // Putar suara
+    window.speechSynthesis.speak(speech);
 }
