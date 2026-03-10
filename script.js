@@ -1,29 +1,21 @@
 // =========================================================
-// 1. KONFIGURASI FIREBASE
+// 1. KONFIGURASI FIREBASE (Sesuai screenshot Anda)
 // =========================================================
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBvTKkVWz5iCO4Za-zkbKYvBjaNlg8try0",
-  authDomain: "project-9d0d452a-34e8-478d-81b.firebaseapp.com",
-  projectId: "project-9d0d452a-34e8-478d-81b",
-  storageBucket: "project-9d0d452a-34e8-478d-81b.firebasestorage.app",
-  messagingSenderId: "403143207083",
-  appId: "1:403143207083:web:7293fa99502bea373a2fee",
-  measurementId: "G-SPWXJ62FLV"
+    apiKey: "AIzaSyBvTKkWvz5iC04Za-zkbKYvBjaNlg8try0",
+    authDomain: "project-9d0d452a-34e8-478d-81b.firebaseapp.com",
+    projectId: "project-9d0d452a-34e8-478d-81b",
+    storageBucket: "project-9d0d452a-34e8-478d-81b.firebasestorage.app",
+    messagingSenderId: "403143207083",
+    appId: "1:403143207083:web:7293fa99502bea373a2fee",
+    measurementId: "G-SPWXJ62FLV"
 };
 
-// Inisialisasi Firebase & Firestore
+// Inisialisasi Firebase & Firestore (Gunakan cara ini jika pakai script compat di HTML)
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// Inisialisasi ikon Lucide
+// Lanjutkan dengan kode Lucide dan logika aplikasi lainnya...
 lucide.createIcons();
 
 // =========================================================
