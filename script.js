@@ -1,14 +1,23 @@
 // =========================================================
 // 1. KONFIGURASI FIREBASE
 // =========================================================
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "MASUKKAN_API_KEY_FIREBASE_ANDA",
-    authDomain: "proyek-anda.firebaseapp.com",
-    projectId: "proyek-anda",
-    storageBucket: "proyek-anda.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "MASUKKAN_APP_ID_ANDA"
-}; // <--- Tadi ini yang hilang
+  apiKey: "AIzaSyBvTKkVWz5iCO4Za-zkbKYvBjaNlg8try0",
+  authDomain: "project-9d0d452a-34e8-478d-81b.firebaseapp.com",
+  projectId: "project-9d0d452a-34e8-478d-81b",
+  storageBucket: "project-9d0d452a-34e8-478d-81b.firebasestorage.app",
+  messagingSenderId: "403143207083",
+  appId: "1:403143207083:web:7293fa99502bea373a2fee",
+  measurementId: "G-SPWXJ62FLV"
+};
 
 // Inisialisasi Firebase & Firestore
 firebase.initializeApp(firebaseConfig);
