@@ -106,10 +106,23 @@
                             <h3 class="text-sm font-semibold text-indigo-900 uppercase flex items-center">
                                 <i data-lucide="sparkles" class="w-4 h-4 mr-2"></i> AI Notulen
                             </h3>
-                            <button onclick="playTTS()" class="p-2 bg-white rounded-lg border border-indigo-100 text-indigo-600 hover:bg-indigo-50 flex items-center" title="Bacakan Notulen">
+                          <button onclick="playTTS()" class="p-2 bg-white rounded-lg border border-indigo-100 text-indigo-600 hover:bg-indigo-50 flex items-center" title="Bacakan Notulen">
                                 <i data-lucide="volume-2" class="w-4 h-4"></i>
                             </button>
                         </div>
+        
+                        <div id="summary-container" class="flex-1 overflow-y-auto space-y-6">
+                            <div id="summary-placeholder" class="h-full flex flex-col items-center justify-center text-center text-gray-400">
+                                <i data-lucide="sparkles" class="w-8 h-8 mb-3 opacity-20"></i>
+                                <p class="text-sm">Notulen AI otomatis akan muncul setelah transkrip diproses.</p>
+                            </div>
+                        </div>
+
+        <button id="btn-save" onclick="saveToFirebase()" class="mt-4 w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center hidden">
+            <i data-lucide="save" class="w-4 h-4 mr-2"></i> Simpan ke Arsip
+        </button>
+    </div>
+</div>
                         
                         <div id="summary-container" class="flex-1 overflow-y-auto space-y-6">
                             <button id="btn-save" onclick="saveToFirebase()" class="mt-4 w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center hidden">
@@ -124,7 +137,7 @@
                 </div>
             </div>
 
-            <div id="view-notes" class="items-center justify-center h-full text-gray-400 hidden">
+            <div id="view-notes" class="flex flex-col gap-4 p-4 hidden">
                 <p>Halaman Arsip sedang dalam pengembangan.</p>
             </div>
 
