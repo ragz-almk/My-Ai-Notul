@@ -3,26 +3,27 @@ export default async function handler(req, res) {
 
     try {
         const { text } = req.body;
-        const prompt = `Anda adalah asisten notulen profesional. Buat ringkasan paragraf singkat dan daftar bullet "Action Items" dari transkrip berikut:\n\n"${text}"`;
+        const apiKey = process.env.GEMINI_API_KEY;
 
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const prompt = `Anda adalah asisten notulen profesional. Buat ringkasan paragraf singkat dan daftar bullet "Action Items" dari transkrip rapat berikut:\n\n"${text}"`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                model: "gpt-3.5-turbo",
-                messages: [{ role: "user", content: prompt }]
+                contents: [{ parts: [{ text: prompt }] }]
             })
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || "Error dari OpenAI LLM");
+        if (!response.ok) throw new Error(data.error?.message || "Error dari Gemini LLM");
 
-        res.status(200).json(data);
+        // Mengambil hasil teks dari struktur respons Gemini
+        const summaryText = data.candidates[0].content.parts[0].text;
+
+        res.status(200).json({ summary: summaryText });
     } catch (error) {
-        console.error("Backend LLM Error:", error);
+        console.error("Backend Summarize Error:", error);
         res.status(500).json({ error: error.message });
     }
 }
