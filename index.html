@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-50 font-sans min-h-screen flex overflow-hidden">
 
@@ -110,6 +112,9 @@
                         </div>
                         
                         <div id="summary-container" class="flex-1 overflow-y-auto space-y-6">
+                            <button id="btn-save" onclick="saveToFirebase()" class="mt-4 w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center hidden">
+                                <i data-lucide="save" class="w-4 h-4 mr-2"></i> Simpan ke Arsip
+                            </button>
                             <div class="h-full flex flex-col items-center justify-center text-center text-gray-400">
                                 <i data-lucide="sparkles" class="w-8 h-8 mb-3 opacity-20"></i>
                                 <p class="text-sm">Notulen AI otomatis akan muncul setelah transkrip diproses.</p>
