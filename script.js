@@ -1,3 +1,16 @@
+// KONFIGURASI FIREBASE
+const firebaseConfig = {
+    apiKey: "MASUKKAN_API_KEY_FIREBASE_ANDA",
+    authDomain: "proyek-anda.firebaseapp.com",
+    projectId: "proyek-anda",
+    storageBucket: "proyek-anda.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "MASUKKAN_APP_ID_ANDA"
+
+// Inisialisasi Firebase & Firestore
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+        
 // Inisialisasi ikon Lucide
 lucide.createIcons();
 
@@ -192,7 +205,9 @@ async function processAudio() {
 
 async function generateSummary(text) {
     summaryContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Gemini sedang merangkum notulen...</p>`;
-
+    // Tampilkan tombol simpan setelah notulen selesai dibuat
+document.getElementById('btn-save').classList.remove('hidden');
+    
     try {
         const llmResponse = await fetch('/api/summarize', {
             method: 'POST',
@@ -261,4 +276,60 @@ function playTTS() {
 
     // Putar suara
     window.speechSynthesis.speak(speech);
+}
+
+// =========================================================
+// FUNGSI SIMPAN KE FIREBASE
+// =========================================================
+async function saveToFirebase() {
+    if (!aiSummaryText) {
+        alert("Belum ada notulen untuk disimpan!");
+        return;
+    }
+
+    const btn = document.getElementById('btn-save');
+    const originalContent = btn.innerHTML; // Simpan tampilan asli tombol
+
+    // Ubah tombol jadi status loading
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Menyimpan...`;
+    btn.classList.add('opacity-75', 'cursor-not-allowed');
+    lucide.createIcons();
+
+    try {
+        // Ambil teks transkrip dari layar (karena transkripnya ada di dalam tag <p>)
+        const transcriptText = document.querySelector('#transcript-container p').innerText;
+
+        // Siapkan data yang akan disimpan
+        const meetingData = {
+            tanggal: new Date().toISOString(),
+            judul_rapat: "Rapat " + new Date().toLocaleDateString('id-ID'),
+            transkrip: transcriptText,
+            ringkasan: aiSummaryText,
+        };
+
+        // Simpan ke dalam koleksi bernama "arsip_rapat" di Firestore
+        await db.collection("arsip_rapat").add(meetingData);
+
+        // Ubah tombol jadi sukses
+        btn.innerHTML = `<i data-lucide="check" class="w-4 h-4 mr-2"></i> Tersimpan!`;
+        btn.classList.replace('bg-indigo-600', 'bg-emerald-500');
+        btn.classList.replace('hover:bg-indigo-700', 'hover:bg-emerald-600');
+        lucide.createIcons();
+
+        // Kembalikan tombol ke semula setelah 3 detik
+        setTimeout(() => {
+            btn.innerHTML = originalContent;
+            btn.classList.replace('bg-emerald-500', 'bg-indigo-600');
+            btn.classList.replace('hover:bg-emerald-600', 'hover:bg-indigo-700');
+            btn.classList.remove('opacity-75', 'cursor-not-allowed');
+            lucide.createIcons();
+        }, 3000);
+
+    } catch (error) {
+        console.error("Firebase Error:", error);
+        alert("Gagal menyimpan data: " + error.message);
+        btn.innerHTML = originalContent;
+        btn.classList.remove('opacity-75', 'cursor-not-allowed');
+        lucide.createIcons();
+    }
 }
