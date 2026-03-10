@@ -189,7 +189,8 @@ async function processAudio() {
 }
 
 async function generateSummary(text) {
-    summaryContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Gemini sedang merangkum...</p>`;
+    summaryContainer.innerHTML = `<div class="text-sm text-gray-800">${formattedHTML}</div>`;
+    document.getElementById('btn-save').classList.remove('hidden');
     
     try {
         const response = await fetch('/api/summarize', {
