@@ -163,79 +163,73 @@ function updateTimerAndWaveform() {
     });
 }
 
-// 4. MEMPROSES AUDIO KE API STT & LLM
+// ... (Kode bagian atas script.js, navigasi tab, dan timer biarkan sama seperti sebelumnya) ...
+// PENTING: Hapus semua variabel STT_API_KEY, LLM_API_KEY, dan URL dari bagian atas script.js Anda!
+
+// 4. MEMPROSES AUDIO KE API STT & LLM MELALUI BACKEND VERCEL
 async function processAudio() {
     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-    const audioFile = new File([audioBlob], "recording.webm", { type: 'audio/webm' });
+    
+    // Ubah audio menjadi string Base64 agar mudah dikirim sebagai JSON ke Vercel API
+    const reader = new FileReader();
+    reader.readAsDataURL(audioBlob);
+    
+    reader.onloadend = async () => {
+        // Mengambil bagian datanya saja (menghilangkan 'data:audio/webm;base64,')
+        const base64Audio = reader.result.split(',')[1];
 
-    try {
-        // --- PROSES 1: Speech-to-Text (API 1) ---
-        const formData = new FormData();
-        formData.append("file", audioFile);
-        formData.append("model", "whisper-1"); // Atau "gpt-4o-transcribe" jika akun Anda sudah didukung
-        
-        transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang mengunggah audio ke AI Transkrip...</p>`;
+        try {
+            transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang mengunggah audio ke server...</p>`;
 
-        const sttResponse = await fetch(STT_API_URL, {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${STT_API_KEY}` },
-            body: formData
-        });
+            // --- PROSES 1: Memanggil file api/transcribe.js ---
+            const sttResponse = await fetch('/api/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audioBase64: base64Audio })
+            });
 
-        const sttData = await sttResponse.json();
-        
-        if(!sttResponse.ok) {
-            console.error("Detail Error STT:", sttData);
-            throw new Error(sttData.error?.message || "STT API Error");
+            const sttData = await sttResponse.json();
+            
+            if(!sttResponse.ok) throw new Error(sttData.error || "Gagal menghubungi backend STT");
+
+            const transcript = sttData.text;
+            transcriptContainer.innerHTML = `<p>${transcript}</p>`;
+            statusText.innerText = "Transkripsi selesai.";
+
+            // --- PROSES 2: Summarization ---
+            generateSummary(transcript);
+
+        } catch (error) {
+            console.error("STT Error:", error);
+            transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">Gagal mentranskrip: ${error.message}</p>`;
         }
-
-        const transcript = sttData.text;
-        transcriptContainer.innerHTML = `<p>${transcript}</p>`;
-        statusText.innerText = "Transkripsi selesai.";
-
-        // --- PROSES 2: Summarization (API 2) ---
-        generateSummary(transcript);
-
-    } catch (error) {
-        console.error("STT Error:", error);
-        transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">Gagal mentranskrip: ${error.message}</p>`;
-    }
+    };
 }
 
 async function generateSummary(text) {
     summaryContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang merangkum dan membuat action items...</p>`;
 
     try {
-        const prompt = `Anda adalah asisten notulen profesional. Buat ringkasan paragraf singkat dan daftar bullet "Action Items" dari transkrip berikut:\n\n"${text}"`;
-
-        const llmResponse = await fetch(LLM_API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${LLM_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: "gpt-3.5-turbo", 
-                messages: [{ role: "user", content: prompt }]
-            })
+        // --- Memanggil file api/summarize.js ---
+        const llmResponse = await fetch('/api/summarize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
         });
 
         const llmData = await llmResponse.json();
         
-        if(!llmResponse.ok) {
-            console.error("Detail Error LLM:", llmData);
-            throw new Error(llmData.error?.message || "LLM API Error");
-        }
+        if(!llmResponse.ok) throw new Error(llmData.error || "Gagal menghubungi backend LLM");
 
         aiSummaryText = llmData.choices[0].message.content; // Simpan untuk Text-to-Speech
 
-        // Format teks menggunakan Regex sederhana untuk tampilan HTML
+        // Format teks untuk tampilan HTML
         const formattedHTML = aiSummaryText
             .replace(/\n\n/g, '<br><br>')
             .replace(/- (.*)/g, '<li class="flex items-start text-sm text-gray-600 mb-1"><i data-lucide="check-circle-2" class="w-4 h-4 text-indigo-500 mr-2 shrink-0"></i>$1</li>');
 
         summaryContainer.innerHTML = `<div class="text-sm text-gray-800">${formattedHTML}</div>`;
-        lucide.createIcons(); // render ulang ikon yang baru disuntikkan
+        lucide.createIcons();
 
     } catch (error) {
         console.error("LLM Error:", error);
@@ -243,7 +237,7 @@ async function generateSummary(text) {
     }
 }
 
-// 5. FITUR TEXT TO SPEECH (Menggunakan OpenAI TTS)
+// 5. FITUR TEXT TO SPEECH (Melalui Backend Vercel)
 async function playTTS() {
     if (!aiSummaryText) {
         alert("Belum ada ringkasan untuk dibacakan.");
@@ -251,49 +245,36 @@ async function playTTS() {
     }
 
     const ttsButton = document.querySelector('button[title="Bacakan Notulen"]');
-    const originalIcon = ttsButton.innerHTML; // Simpan ikon original (Volume)
+    const originalIcon = ttsButton.innerHTML;
 
     try {
-        // Ubah ikon tombol menjadi status "Loading" agar pengguna tahu proses sedang berjalan
         ttsButton.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-indigo-500"></i>`;
         lucide.createIcons();
 
-        // Mengirim request ke OpenAI Audio Speech API
-        const response = await fetch(TTS_API_URL, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${LLM_API_KEY}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "tts-1", 
-                voice: "nova",  
-                input: aiSummaryText
-            })
+        // --- Memanggil file api/tts.js ---
+        const response = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: aiSummaryText })
         });
 
         if (!response.ok) {
             const errData = await response.json();
-            throw new Error(errData.error?.message || "Gagal memanggil API TTS OpenAI");
+            throw new Error(errData.error || "Gagal menghubungi backend TTS");
         }
 
-        // OpenAI mengembalikan file audio (audio/mpeg). Kita ubah menjadi Blob.
+        // Karena backend mengembalikan file Buffer Audio, kita ubah jadi Blob
         const audioBlob = await response.blob();
-        
-        // Buat URL sementara (Object URL) dari Blob tersebut agar bisa diputar di browser
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         
-        // Putar suaranya!
         audio.play();
 
-        // Kembalikan ikon ke semula ketika audio mulai diputar
         audio.onplay = () => {
             ttsButton.innerHTML = originalIcon;
             lucide.createIcons();
         };
 
-        // Bersihkan memori setelah audio selesai diputar
         audio.onended = () => {
             URL.revokeObjectURL(audioUrl);
         };
@@ -301,8 +282,6 @@ async function playTTS() {
     } catch (error) {
         console.error("TTS Error:", error);
         alert("Terjadi kesalahan saat memutar TTS: " + error.message);
-        
-        // Kembalikan ikon jika terjadi error
         ttsButton.innerHTML = originalIcon;
         lucide.createIcons();
     }
