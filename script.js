@@ -164,7 +164,7 @@ async function processAudio() {
         const base64Audio = reader.result.split(',')[1];
 
         try {
-            transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang mengirim audio ke Gemini AI...</p>`;
+            transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang mengirim audio ke Google Cloud STT...</p>`;
 
             // --- PROSES 1: Transkripsi ---
             const sttResponse = await fetch('/api/transcribe', {
