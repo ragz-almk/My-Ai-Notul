@@ -1,4 +1,6 @@
-// KONFIGURASI FIREBASE
+// =========================================================
+// 1. KONFIGURASI FIREBASE
+// =========================================================
 const firebaseConfig = {
     apiKey: "MASUKKAN_API_KEY_FIREBASE_ANDA",
     authDomain: "proyek-anda.firebaseapp.com",
@@ -6,24 +8,26 @@ const firebaseConfig = {
     storageBucket: "proyek-anda.appspot.com",
     messagingSenderId: "123456789",
     appId: "MASUKKAN_APP_ID_ANDA"
+}; // <--- Tadi ini yang hilang
 
 // Inisialisasi Firebase & Firestore
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-        
+
 // Inisialisasi ikon Lucide
 lucide.createIcons();
 
-// Variabel State
+// =========================================================
+// 2. VARIABEL STATE & DOM ELEMENTS
+// =========================================================
 let isRecording = false;
 let recordingTime = 0;
 let timerInterval;
 let mediaRecorder;
 let audioChunks = [];
-let aiSummaryText = ""; // Untuk fitur Text-to-Speech
+let aiSummaryText = ""; 
 
-// DOM Elements
-const timerDisplay = document.getElementById('timerDisplay');
+const timerDisplay = document.getElementById('timer-display');
 const toggleRecordBtn = document.getElementById('toggle-record-btn');
 const recordIcon = document.getElementById('record-icon');
 const recordText = document.getElementById('record-text');
@@ -31,28 +35,28 @@ const waveformContainer = document.getElementById('waveform');
 const statusText = document.getElementById('status-text');
 const transcriptContainer = document.getElementById('transcript-container');
 const summaryContainer = document.getElementById('summary-container');
+const btnSave = document.getElementById('btn-save');
 
-// 1. BUAT GELOMBANG SUARA (Visual UI saja)
+// Inisialisasi Bar Gelombang Suara
 for (let i = 0; i < 30; i++) {
     const bar = document.createElement('div');
     bar.className = 'wave-bar';
     waveformContainer.appendChild(bar);
 }
 
-// 2. NAVIGASI TAB & SIDEBAR
+// =========================================================
+// 3. NAVIGASI & UI CONTROL
+// =========================================================
 function switchTab(tabId) {
-    // Sembunyikan semua view
     document.getElementById('view-dashboard').classList.replace('block', 'hidden');
     document.getElementById('view-recording').classList.replace('flex', 'hidden');
     document.getElementById('view-notes').classList.replace('flex', 'hidden');
 
-    // Reset style semua tombol navigasi
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('bg-indigo-50', 'text-indigo-600', 'font-medium');
         btn.classList.add('text-gray-500', 'hover:bg-gray-50');
     });
 
-    // Tampilkan view yang dipilih
     if(tabId === 'recording') {
         document.getElementById('view-recording').classList.replace('hidden', 'flex');
         document.getElementById('header-title').innerText = 'Sesi Rekaman';
@@ -62,19 +66,18 @@ function switchTab(tabId) {
     } else {
         document.getElementById('view-notes').classList.replace('hidden', 'flex');
         document.getElementById('header-title').innerText = 'Arsip Notulen';
+        loadArchive(); // Fungsi untuk memuat data dari Firebase
     }
 
-    // Update style tombol yang aktif
     const activeBtn = document.getElementById(`nav-${tabId}`);
-    activeBtn.classList.remove('text-gray-500', 'hover:bg-gray-50');
     activeBtn.classList.add('bg-indigo-50', 'text-indigo-600', 'font-medium');
-
-    // Tutup sidebar di mobile
+    
+    // Close sidebar mobile
     document.getElementById('sidebar').classList.add('-translate-x-full');
     document.getElementById('sidebar-overlay').classList.add('hidden');
 }
 
-// Sidebar Mobile Toggle
+// Sidebar Mobile Toggles
 document.getElementById('open-sidebar').onclick = () => {
     document.getElementById('sidebar').classList.remove('-translate-x-full');
     document.getElementById('sidebar-overlay').classList.remove('hidden');
@@ -83,9 +86,10 @@ document.getElementById('close-sidebar').onclick = () => {
     document.getElementById('sidebar').classList.add('-translate-x-full');
     document.getElementById('sidebar-overlay').classList.add('hidden');
 };
-document.getElementById('sidebar-overlay').onclick = document.getElementById('close-sidebar').onclick;
 
-// 3. FUNGSI PEREKAMAN AUDIO
+// =========================================================
+// 4. LOGIKA PEREKAMAN
+// =========================================================
 toggleRecordBtn.addEventListener('click', async () => {
     if (!isRecording) {
         await startRecording();
@@ -96,7 +100,6 @@ toggleRecordBtn.addEventListener('click', async () => {
 
 async function startRecording() {
     try {
-        // Meminta izin mikrofon
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
@@ -105,71 +108,59 @@ async function startRecording() {
             if (event.data.size > 0) audioChunks.push(event.data);
         };
 
-        mediaRecorder.onstop = processAudio; // Saat berhenti, proses ke AI
-
+        mediaRecorder.onstop = processAudio;
         mediaRecorder.start();
+        
         isRecording = true;
-        switchTab('recording');
+        recordingTime = 0;
+        btnSave.classList.add('hidden'); // Sembunyikan tombol simpan saat rekam baru
 
-        // Update UI Button
+        // UI Update
         toggleRecordBtn.classList.replace('bg-indigo-600', 'bg-red-50');
         toggleRecordBtn.classList.replace('text-white', 'text-red-600');
-        toggleRecordBtn.classList.add('ring-1', 'ring-red-200');
         recordText.innerText = "Hentikan";
         recordIcon.setAttribute('data-lucide', 'square');
         lucide.createIcons();
         waveformContainer.classList.add('is-recording');
-        statusText.innerText = "Sedang merekam... Bicaralah.";
+        statusText.innerText = "Sedang merekam...";
         
-        // Mulai Timer & Animasi Gelombang
         timerInterval = setInterval(updateTimerAndWaveform, 1000);
-
     } catch (err) {
-        alert("Gagal mengakses mikrofon: " + err.message);
+        alert("Mikrofon tidak diizinkan: " + err.message);
     }
 }
 
 function stopRecording() {
     isRecording = false;
     mediaRecorder.stop();
-    mediaRecorder.stream.getTracks().forEach(track => track.stop()); // Matikan mikrofon
+    mediaRecorder.stream.getTracks().forEach(track => track.stop());
     clearInterval(timerInterval);
 
-    // Reset UI Button
     toggleRecordBtn.classList.replace('bg-red-50', 'bg-indigo-600');
     toggleRecordBtn.classList.replace('text-red-600', 'text-white');
-    toggleRecordBtn.classList.remove('ring-1', 'ring-red-200');
     recordText.innerText = "Mulai Rekam";
     recordIcon.setAttribute('data-lucide', 'mic');
     lucide.createIcons();
     waveformContainer.classList.remove('is-recording');
-    
-    // Reset tinggi gelombang
-    document.querySelectorAll('.wave-bar').forEach(bar => bar.style.height = '8px');
-    statusText.innerText = "Memproses transkripsi AI... Mohon tunggu.";
+    statusText.innerText = "Memproses transkripsi...";
 }
 
 function updateTimerAndWaveform() {
     recordingTime++;
     const m = Math.floor(recordingTime / 60).toString().padStart(2, '0');
     const s = (recordingTime % 60).toString().padStart(2, '0');
-    document.getElementById('timer-display').innerText = `${m}:${s}`;
+    timerDisplay.innerText = `${m}:${s}`;
 
-    // Animasi acak untuk gelombang saat merekam
     document.querySelectorAll('.wave-bar').forEach(bar => {
-        const height = Math.floor(Math.random() * 40) + 10; // Tinggi acak 10-50px
-        bar.style.height = `${height}px`;
+        bar.style.height = `${Math.floor(Math.random() * 40) + 10}px`;
     });
 }
 
-// ... (Kode bagian atas script.js, navigasi tab, dan timer biarkan sama seperti sebelumnya) ...
-// PENTING: Hapus semua variabel STT_API_KEY, LLM_API_KEY, dan URL dari bagian atas script.js Anda!
-
-// 4. MEMPROSES AUDIO KE VERCEL BACKEND (MENGGUNAKAN GEMINI)
+// =========================================================
+// 5. PEMROSESAN AI (STT & GEMINI SUMMARY)
+// =========================================================
 async function processAudio() {
     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-    
-    // Ubah audio menjadi string Base64
     const reader = new FileReader();
     reader.readAsDataURL(audioBlob);
     
@@ -177,159 +168,95 @@ async function processAudio() {
         const base64Audio = reader.result.split(',')[1];
 
         try {
-            transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Sedang mengirim audio ke Google Cloud STT...</p>`;
+            transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Mentranskrip via Google Cloud...</p>`;
 
-            // --- PROSES 1: Transkripsi ---
-            const sttResponse = await fetch('/api/transcribe', {
+            const response = await fetch('/api/transcribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ audioBase64: base64Audio })
             });
 
-            const sttData = await sttResponse.json();
-            if(!sttResponse.ok) throw new Error(sttData.error || "Gagal menghubungi backend STT");
+            const data = await response.json();
+            if(!response.ok) throw new Error(data.error);
 
-            const transcript = sttData.text; // Sesuai dengan kembalian di api/transcribe.js
-            transcriptContainer.innerHTML = `<p>${transcript}</p>`;
-            statusText.innerText = "Transkripsi selesai.";
-
-            // --- PROSES 2: Rangkuman ---
-            generateSummary(transcript);
-
+            transcriptContainer.innerHTML = `<p>${data.text}</p>`;
+            generateSummary(data.text);
         } catch (error) {
-            console.error("STT Error:", error);
-            transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">Gagal mentranskrip: ${error.message}</p>`;
+            transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">Error STT: ${error.message}</p>`;
         }
     };
 }
 
 async function generateSummary(text) {
-    summaryContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Gemini sedang merangkum notulen...</p>`;
-    // Tampilkan tombol simpan setelah notulen selesai dibuat
-document.getElementById('btn-save').classList.remove('hidden');
+    summaryContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Gemini sedang merangkum...</p>`;
     
     try {
-        const llmResponse = await fetch('/api/summarize', {
+        const response = await fetch('/api/summarize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: text })
         });
 
-        const llmData = await llmResponse.json();
-        if(!llmResponse.ok) throw new Error(llmData.error || "Gagal menghubungi backend LLM");
+        const data = await response.json();
+        if(!response.ok) throw new Error(data.error);
 
-        aiSummaryText = llmData.summary; // Menyimpan teks murni untuk fitur TTS
-
-        // Membersihkan format Markdown tebal (**) dari Gemini agar tampilan HTML lebih rapi
-        let cleanText = aiSummaryText.replace(/\*\*/g, '');
-
-        // Format teks untuk tampilan HTML
+        aiSummaryText = data.summary;
+        
+        // Format Tampilan
+        const cleanText = aiSummaryText.replace(/\*\*/g, '');
         const formattedHTML = cleanText
             .replace(/\n\n/g, '<br><br>')
             .replace(/\* (.*)/g, '<li class="flex items-start text-sm text-gray-600 mb-1"><i data-lucide="check-circle-2" class="w-4 h-4 text-indigo-500 mr-2 shrink-0"></i>$1</li>');
 
         summaryContainer.innerHTML = `<div class="text-sm text-gray-800">${formattedHTML}</div>`;
+        btnSave.classList.remove('hidden'); // Munculkan tombol simpan
+        statusText.innerText = "Selesai.";
         lucide.createIcons();
-
     } catch (error) {
-        console.error("LLM Error:", error);
-        summaryContainer.innerHTML = `<p class="text-red-500 text-sm">Gagal membuat ringkasan: ${error.message}</p>`;
+        summaryContainer.innerHTML = `<p class="text-red-500 text-sm">Error Summary: ${error.message}</p>`;
     }
 }
 
-// 5. FITUR TEXT TO SPEECH (Menggunakan Browser Native Web Speech API)
+// =========================================================
+// 6. TEXT TO SPEECH & FIREBASE STORAGE
+// =========================================================
 function playTTS() {
-    if (!aiSummaryText) {
-        alert("Belum ada ringkasan untuk dibacakan.");
-        return;
-    }
-
-    // Menghentikan jika ada ucapan sebelumnya yang masih berjalan
-    window.speechSynthesis.cancel(); 
-
-    // Membersihkan simbol bintang dari markdown Gemini agar tidak ikut dibaca oleh robot
-    const cleanTextForSpeech = aiSummaryText.replace(/\*/g, '');
-
-    const speech = new SpeechSynthesisUtterance(cleanTextForSpeech);
-    speech.lang = 'id-ID'; // Menggunakan bahasa Indonesia
-    speech.rate = 1.0;     // Kecepatan normal
-    
-    const ttsButton = document.querySelector('button[title="Bacakan Notulen"]');
-    const originalIcon = ttsButton.innerHTML;
-
-    // Ubah ikon saat mulai berbicara
-    speech.onstart = () => {
-        ttsButton.innerHTML = `<i data-lucide="volume-x" class="w-4 h-4 text-indigo-500 animate-pulse"></i>`;
-        lucide.createIcons();
-    };
-
-    // Kembalikan ikon saat selesai
-    speech.onend = () => {
-        ttsButton.innerHTML = originalIcon;
-        lucide.createIcons();
-    };
-
-    speech.onerror = () => {
-        ttsButton.innerHTML = originalIcon;
-        lucide.createIcons();
-    };
-
-    // Putar suara
+    if (!aiSummaryText) return;
+    window.speechSynthesis.cancel();
+    const speech = new SpeechSynthesisUtterance(aiSummaryText.replace(/\*/g, ''));
+    speech.lang = 'id-ID';
     window.speechSynthesis.speak(speech);
 }
 
-// =========================================================
-// FUNGSI SIMPAN KE FIREBASE
-// =========================================================
 async function saveToFirebase() {
-    if (!aiSummaryText) {
-        alert("Belum ada notulen untuk disimpan!");
-        return;
-    }
-
     const btn = document.getElementById('btn-save');
-    const originalContent = btn.innerHTML; // Simpan tampilan asli tombol
+    const originalContent = btn.innerHTML;
 
-    // Ubah tombol jadi status loading
     btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Menyimpan...`;
     btn.classList.add('opacity-75', 'cursor-not-allowed');
     lucide.createIcons();
 
     try {
-        // Ambil teks transkrip dari layar (karena transkripnya ada di dalam tag <p>)
         const transcriptText = document.querySelector('#transcript-container p').innerText;
 
-        // Siapkan data yang akan disimpan
-        const meetingData = {
+        await db.collection("arsip_rapat").add({
             tanggal: new Date().toISOString(),
             judul_rapat: "Rapat " + new Date().toLocaleDateString('id-ID'),
             transkrip: transcriptText,
             ringkasan: aiSummaryText,
-        };
+        });
 
-        // Simpan ke dalam koleksi bernama "arsip_rapat" di Firestore
-        await db.collection("arsip_rapat").add(meetingData);
-
-        // Ubah tombol jadi sukses
-        btn.innerHTML = `<i data-lucide="check" class="w-4 h-4 mr-2"></i> Tersimpan!`;
+        btn.innerHTML = `<i data-lucide="check" class="w-4 h-4 mr-2"></i> Berhasil!`;
         btn.classList.replace('bg-indigo-600', 'bg-emerald-500');
-        btn.classList.replace('hover:bg-indigo-700', 'hover:bg-emerald-600');
-        lucide.createIcons();
 
-        // Kembalikan tombol ke semula setelah 3 detik
         setTimeout(() => {
             btn.innerHTML = originalContent;
             btn.classList.replace('bg-emerald-500', 'bg-indigo-600');
-            btn.classList.replace('hover:bg-emerald-600', 'hover:bg-indigo-700');
             btn.classList.remove('opacity-75', 'cursor-not-allowed');
             lucide.createIcons();
         }, 3000);
-
     } catch (error) {
-        console.error("Firebase Error:", error);
-        alert("Gagal menyimpan data: " + error.message);
+        alert("Gagal simpan: " + error.message);
         btn.innerHTML = originalContent;
-        btn.classList.remove('opacity-75', 'cursor-not-allowed');
-        lucide.createIcons();
     }
 }
