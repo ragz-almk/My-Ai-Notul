@@ -103,7 +103,7 @@
 
                 <div class="w-full lg:w-96 flex flex-col gap-6">
                     <div class="flex-1 bg-gradient-to-b from-indigo-50 to-white p-6 rounded-2xl border border-indigo-100 shadow-sm flex flex-col">
-        
+                        
                         <div class="flex items-center justify-between mb-6">
                             <h3 class="text-sm font-semibold text-indigo-900 uppercase flex items-center">
                                 <i data-lucide="sparkles" class="w-4 h-4 mr-2"></i> AI Notulen
@@ -113,29 +113,17 @@
                             </button>
                         </div>
 
-                      <div id="summary-container" class="flex-1 overflow-y-auto space-y-6 mb-4">
-                        <div id="summary-placeholder" class="h-full flex flex-col items-center justify-center text-center text-gray-400">
-                            <i data-lucide="sparkles" class="w-8 h-8 mb-3 opacity-20"></i>
-                            <p class="text-sm">Notulen AI otomatis akan muncul setelah transkrip diproses.</p>
-                        </div>
-                      </div>
-
-                      <button id="btn-save" onclick="saveToFirebase()" class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center hidden">
-                            <i data-lucide="save" class="w-4 h-4 mr-2"></i> Simpan ke Arsip
-                      </button>
-
-                    </div>
-                </div>
-                        
-                        <div id="summary-container" class="flex-1 overflow-y-auto space-y-6">
-                            <button id="btn-save" onclick="saveToFirebase()" class="mt-4 w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center hidden">
-                                <i data-lucide="save" class="w-4 h-4 mr-2"></i> Simpan ke Arsip
-                            </button>
-                            <div class="h-full flex flex-col items-center justify-center text-center text-gray-400">
+                        <div id="summary-container" class="flex-1 overflow-y-auto space-y-6 mb-4">
+                            <div id="summary-placeholder" class="h-full flex flex-col items-center justify-center text-center text-gray-400">
                                 <i data-lucide="sparkles" class="w-8 h-8 mb-3 opacity-20"></i>
                                 <p class="text-sm">Notulen AI otomatis akan muncul setelah transkrip diproses.</p>
                             </div>
                         </div>
+
+                        <button id="btn-save" onclick="saveToFirebase()" class="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center hidden">
+                            <i data-lucide="save" class="w-4 h-4 mr-2"></i> Simpan ke Arsip
+                        </button>
+
                     </div>
                 </div>
             </div>
