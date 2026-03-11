@@ -255,33 +255,59 @@ function playTTS() {
 }
 
 async function saveToFirebase() {
-    const originalContent = btnSave.innerHTML;
+    // 1. Mencegah klik ganda saat sedang loading
+    if (btnSave.disabled) return;
+    
+    // Simpan teks asli dengan ikon
+    const originalContent = `<i data-lucide="save" class="w-4 h-4 mr-2"></i> Simpan ke Arsip`;
+    
+    // 2. Kunci tombol agar tidak bisa diklik lagi
+    btnSave.disabled = true;
     btnSave.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin mr-2"></i> Menyimpan...`;
     btnSave.classList.add('opacity-75', 'cursor-not-allowed');
     lucide.createIcons();
 
     try {
-        const transcriptText = transcriptContainer.querySelector('p').innerText;
+        // 3. Ambil teks dengan aman (mencegah error undefined)
+        const pElement = transcriptContainer.querySelector('p');
+        const transcriptText = pElement ? pElement.innerText : "Tidak ada transkrip";
+        const finalSummary = aiSummaryText || "Tidak ada ringkasan AI";
+
+        console.log("Mengirim ke Firestore...", { transcriptText, finalSummary });
+
+        // 4. Proses Simpan
         await db.collection("arsip_rapat").add({
             tanggal: new Date().toISOString(),
             judul_rapat: "Rapat " + new Date().toLocaleDateString('id-ID'),
             transkrip: transcriptText,
-            ringkasan: aiSummaryText,
+            ringkasan: finalSummary,
         });
 
+        // 5. Berhasil!
+        console.log("Berhasil disimpan ke arsip!");
         btnSave.innerHTML = `<i data-lucide="check" class="w-4 h-4 mr-2"></i> Tersimpan!`;
         btnSave.classList.replace('bg-indigo-600', 'bg-emerald-500');
+        lucide.createIcons();
 
+        // Kembalikan tombol ke semula setelah 3 detik
         setTimeout(() => {
+            btnSave.disabled = false;
             btnSave.innerHTML = originalContent;
             btnSave.classList.replace('bg-emerald-500', 'bg-indigo-600');
             btnSave.classList.remove('opacity-75', 'cursor-not-allowed');
             lucide.createIcons();
         }, 3000);
+
     } catch (error) {
-        alert("Gagal simpan: " + error.message);
+        // 6. Jika gagal, tampilkan error di console dan layar
+        console.error("Gagal simpan ke Firestore:", error);
+        alert("Gagal menyimpan ke arsip: " + error.message);
+        
+        // Kembalikan status tombol
+        btnSave.disabled = false;
         btnSave.innerHTML = originalContent;
         btnSave.classList.remove('opacity-75', 'cursor-not-allowed');
+        lucide.createIcons();
     }
 }
 
