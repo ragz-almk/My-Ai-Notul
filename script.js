@@ -47,29 +47,43 @@ for (let i = 0; i < 30; i++) {
 // 3. NAVIGASI
 // =========================================================
 function switchTab(tabId) {
-    document.getElementById('view-dashboard').classList.replace('block', 'hidden');
-    document.getElementById('view-recording').classList.replace('flex', 'hidden');
-    document.getElementById('view-notes').classList.replace('hidden', 'flex');
+    // 1. Sembunyikan semua halaman terlebih dahulu dengan aman
+    document.getElementById('view-dashboard').classList.add('hidden');
+    document.getElementById('view-dashboard').classList.remove('block');
+    
+    document.getElementById('view-recording').classList.add('hidden');
+    document.getElementById('view-recording').classList.remove('flex');
+    
+    document.getElementById('view-notes').classList.add('hidden');
+    document.getElementById('view-notes').classList.remove('flex');
 
+    // 2. Reset tampilan semua tombol navigasi
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('bg-indigo-50', 'text-indigo-600', 'font-medium');
         btn.classList.add('text-gray-500', 'hover:bg-gray-50');
     });
 
+    // 3. Tampilkan hanya halaman yang dipilih sesuai tabId
     if(tabId === 'recording') {
-        document.getElementById('view-recording').classList.replace('hidden', 'flex');
+        document.getElementById('view-recording').classList.remove('hidden');
+        document.getElementById('view-recording').classList.add('flex');
         document.getElementById('header-title').innerText = 'Sesi Rekaman';
     } else if(tabId === 'dashboard') {
-        document.getElementById('view-dashboard').classList.replace('hidden', 'block');
+        document.getElementById('view-dashboard').classList.remove('hidden');
+        document.getElementById('view-dashboard').classList.add('block');
         document.getElementById('header-title').innerText = 'Selamat Pagi!';
     } else {
-        document.getElementById('view-notes').classList.replace('hidden', 'flex');
+        document.getElementById('view-notes').classList.remove('hidden');
+        document.getElementById('view-notes').classList.add('flex');
         document.getElementById('header-title').innerText = 'Arsip Notulen';
         // loadArchive(); // Panggil ini jika sudah membuat fungsi load
     }
 
+    // 4. Tandai tombol navigasi yang aktif
     const activeBtn = document.getElementById(`nav-${tabId}`);
     activeBtn.classList.add('bg-indigo-50', 'text-indigo-600', 'font-medium');
+    
+    // 5. Tutup sidebar di mode mobile
     document.getElementById('sidebar').classList.add('-translate-x-full');
     document.getElementById('sidebar-overlay').classList.add('hidden');
 }
