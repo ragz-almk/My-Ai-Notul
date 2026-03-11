@@ -231,3 +231,29 @@ async function saveToFirebase() {
         btnSave.classList.remove('opacity-75', 'cursor-not-allowed');
     }
 }
+
+// =========================================================
+// 7. KONTROL SIDEBAR (MOBILE VIEW)
+// =========================================================
+const sidebar = document.getElementById('sidebar');
+const openSidebarBtn = document.getElementById('open-sidebar');
+const closeSidebarBtn = document.getElementById('close-sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+// Fungsi untuk membuka sidebar
+openSidebarBtn.addEventListener('click', () => {
+    sidebar.classList.remove('-translate-x-full');
+    sidebarOverlay.classList.remove('hidden');
+});
+
+// Fungsi untuk menutup sidebar dari tombol "X"
+closeSidebarBtn.addEventListener('click', () => {
+    sidebar.classList.add('-translate-x-full');
+    sidebarOverlay.classList.add('hidden');
+});
+
+// Fungsi untuk menutup sidebar jika user mengklik area gelap (overlay) di luar sidebar
+sidebarOverlay.addEventListener('click', () => {
+    sidebar.classList.add('-translate-x-full');
+    sidebarOverlay.classList.add('hidden');
+});
