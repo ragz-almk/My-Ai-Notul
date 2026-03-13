@@ -150,79 +150,42 @@ function updateTimerAndWaveform() {
 // 5. PEMROSESAN AI
 // =========================================================
 async function processAudio() {
-    // 1. Siapkan file audio dari hasil rekaman
     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-    
-    // 2. Buat nama file yang unik berdasarkan waktu saat ini
     const fileName = `rekaman_${Date.now()}.webm`;
-    
-    // 3. Tentukan lokasi penyimpanan di Firebase Storage (folder: audio_rapat)
     const storageRef = storage.ref(`audio_rapat/${fileName}`);
     
     try {
-        // Tampilkan status loading upload ke layar
         const fileSizeMB = (audioBlob.size / 1024 / 1024).toFixed(2);
-        transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Mengunggah rekaman ke Cloud (${fileSizeMB} MB)...</p>`;
+        transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Mengunggah ke Storage (${fileSizeMB} MB)...</p>`;
         
-        // 4. Proses unggah file ke Firebase Storage
+        // 1. Upload ke Firebase (Tetap sama)
         await storageRef.put(audioBlob);
         
-        // 5. Buat format URL khusus (gs://) yang diwajibkan oleh Google Cloud STT
-        const gcsUri = `gs://${firebaseConfig.storageBucket}/audio_rapat/${fileName}`;
+        // 2. AMBIL DOWNLOAD URL (Whisper tidak bisa baca gs://)
+        // Kita butuh URL publik https:// agar Whisper bisa mengambil file-nya
+        const downloadURL = await storageRef.getDownloadURL();
         
-        // Update status di layar
-        transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Meminta AI memulai transkripsi...</p>`;
+        transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">AI Whisper sedang mentranskrip...</p>`;
         
-        // 6. Minta backend memulai proses dengan mengirim URI storage
-        const startRes = await fetch('/api/transcribe', {
+        // 3. Panggil Backend (Satu kali jalan, tanpa nomor resi)
+        const response = await fetch('/api/transcribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ gcsUri: gcsUri }) 
+            body: JSON.stringify({ fileUrl: downloadURL }) // Ganti gcsUri jadi fileUrl
         });
-        const startData = await startRes.json();
         
-        // Jika ada error dari server, hentikan dan lempar error
-        if(!startRes.ok) throw new Error(startData.error || "Gagal memulai API");
-
-        // Ambil "Nomor Resi" (Operation Name) dari backend
-        const operationName = startData.operationName;
+        const data = await response.json();
         
-        // Update status di layar lagi
-        transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">AI sedang mentranskrip (mengecek setiap 5 detik)...</p>`;
+        if(!response.ok) throw new Error(data.error || "Gagal transkripsi");
 
-        // 7. Lakukan pengecekan (Polling) dari Frontend agar Vercel aman dari Timeout
-        let isDone = false;
+        // 4. Tampilkan hasil (Langsung dapat teks, tidak perlu polling)
+        transcriptContainer.innerHTML = `<p class="text-gray-800">${data.text}</p>`;
         
-        while (!isDone) {
-            // Jeda/tunggu 5 detik sebelum mengecek lagi ke server
-            await new Promise(resolve => setTimeout(resolve, 5000));
-
-            // Tanya backend: "Apakah resi ini sudah selesai?"
-            const checkRes = await fetch('/api/check-status', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ operationName: operationName })
-            });
-            
-            const checkData = await checkRes.json();
-            
-            if (!checkRes.ok) throw new Error(checkData.error || "Gagal mengecek status API");
-
-            // Jika backend menjawab "Sudah Selesai" (done: true)
-            if (checkData.done) {
-                isDone = true; // Hentikan perulangan (loop)
-                
-                // Tampilkan hasil teks transkrip di layar
-                transcriptContainer.innerHTML = `<p class="text-gray-800">${checkData.text}</p>`;
-                
-                // Lanjut otomatis ke proses Rangkuman (Gemini)
-                generateSummary(checkData.text); 
-            }
-        }
+        // 5. Lanjut ke Summary
+        generateSummary(data.text); 
         
     } catch (error) {
-        // Jika ada yang gagal di tahap mana pun, tampilkan pesan error merah
-        transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">Error Pemrosesan: ${error.message}</p>`;
+        transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">Error: ${error.message}</p>`;
     }
 }
 
