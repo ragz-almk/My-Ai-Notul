@@ -147,7 +147,7 @@ function updateTimerAndWaveform() {
 }
 
 // =========================================================
-// 5. PEMROSESAN AI
+// 5. PEMROSESAN AI (VERSI FIX)
 // =========================================================
 async function processAudio() {
     const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
@@ -158,33 +158,39 @@ async function processAudio() {
         const fileSizeMB = (audioBlob.size / 1024 / 1024).toFixed(2);
         transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">Mengunggah ke Storage (${fileSizeMB} MB)...</p>`;
         
-        // 1. Upload ke Firebase (Tetap sama)
+        // 1. Upload ke Firebase
         await storageRef.put(audioBlob);
         
-        // 2. AMBIL DOWNLOAD URL (Whisper tidak bisa baca gs://)
-        // Kita butuh URL publik https:// agar Whisper bisa mengambil file-nya
+        // 2. Ambil Download URL
         const downloadURL = await storageRef.getDownloadURL();
         
         transcriptContainer.innerHTML = `<p class="text-indigo-500 animate-pulse text-sm">AI Whisper sedang mentranskrip...</p>`;
         
-        // 3. Panggil Backend (Satu kali jalan, tanpa nomor resi)
-        const response = await fetch('/api/transcribe', {
+        // 3. Panggil Backend
+        const startRes = await fetch('/api/transcribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileUrl: downloadURL }) // Ganti gcsUri jadi fileUrl
+            body: JSON.stringify({ fileUrl: downloadURL }) 
         });
         
-        const data = await response.json();
+        // Pastikan variabel penampung json konsisten
+        const result = await startRes.json(); 
         
-        if(!response.ok) throw new Error(data.error || "Gagal transkripsi");
+        // Cek startRes.ok (bukan response.ok)
+        if(!startRes.ok) throw new Error(result.error || "Gagal transkripsi");
 
-        // 4. Tampilkan hasil (Langsung dapat teks, tidak perlu polling)
-        transcriptContainer.innerHTML = `<p class="text-gray-800">${data.text}</p>`;
+        // Gunakan variabel result yang sudah di-parse tadi
+        if (result.text) {
+            transcriptContainer.innerHTML = `<p class="text-gray-800">${result.text}</p>`;
         
-        // 5. Lanjut ke Summary
-        generateSummary(data.text); 
+            // 4. Lanjut ke Summary
+            generateSummary(result.text); 
+        } else {
+            throw new Error("Teks tidak ditemukan dalam respon JSON");
+        } 
         
     } catch (error) {
+        // Akan menangkap error jika Groq Error 400 atau variabel salah panggil
         transcriptContainer.innerHTML = `<p class="text-red-500 text-sm">Error: ${error.message}</p>`;
     }
 }

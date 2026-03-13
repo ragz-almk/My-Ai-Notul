@@ -1,39 +1,45 @@
-// transcribe.js
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
-        const { audioUrl } = req.body; // Whisper butuh URL publik atau file langsung
-        const apiKey = process.env.GROQ_API_KEY; 
+        const { fileUrl } = req.body; 
+        const apiKey = process.env.GROQ_API_KEY;
 
-        // Catatan: Jika audio ada di GCS, pastikan 'audioUrl' adalah Signed URL yang bisa diakses publik
-        
-        // Menyiapkan Form Data untuk Whisper
-        // Di lingkungan Node.js, biasanya kita perlu mengambil file-nya dulu atau menggunakan stream
-        const response = await fetch(`https://api.groq.com/openai/v1/audio/transcriptions`, {
-            method: "POST",
+        if (!fileUrl) throw new Error("File URL kosong");
+
+        // 1. Ambil file dari Firebase
+        const audioResponse = await fetch(fileUrl);
+        const audioBlob = await audioResponse.blob();
+
+        // 2. Bungkus ke FormData (Format WAJIB Whisper Groq)
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'rekaman.webm');
+        formData.append('model', 'whisper-large-v3');
+        formData.append('language', 'id'); // Paksa ke Bahasa Indonesia
+        formData.append('response_format', 'json');
+
+        // 3. Tembak ke Groq
+        const groqRes = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+            method: 'POST',
             headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json" // Jika mengirim file langsung, gunakan multipart/form-data
+                'Authorization': `Bearer ${apiKey}`
+                // Jangan set Content-Type manual, fetch akan otomatis set ke multipart/form-data
             },
-            body: JSON.stringify({
-                file: audioUrl, // Tergantung library, biasanya perlu dikonversi ke Blob/File
-                model: "whisper-large-v3",
-                language: "id",
-                response_format: "json"
-            })
+            body: formData
         });
 
-        const data = await response.json();
-        
-        // Berbeda dengan Google, data di sini kemungkinan besar LANGSUNG berisi teks
-        res.status(200).json({ 
-            text: data.text, 
-            status: "completed" // Kita beri status completed agar frontend tahu ini sudah selesai
-        });
+        const data = await groqRes.json();
+
+        if (!groqRes.ok) {
+            console.error("Groq Ngambek:", data);
+            throw new Error(data.error?.message || "Gagal di Groq");
+        }
+
+        // 4. Balikkan teks ke Frontend
+        res.status(200).json({ text: data.text });
 
     } catch (error) {
-        console.error("Whisper Error:", error);
+        console.error("Transcribe Error:", error);
         res.status(500).json({ error: error.message });
     }
 }
